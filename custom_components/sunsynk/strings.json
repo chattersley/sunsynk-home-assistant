@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SunSynk Connection",
+        "description": "Enter your SunSynk credentials to connect to your inverter plant.",
+        "data": {
+          "region": "SunSynk Region",
+          "email": "Email Address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to SunSynk API",
+      "invalid_auth": "Invalid email or password",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This SunSynk account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_power": {
+        "name": "Plant Power"
+      }
+    }
+  }
+}
