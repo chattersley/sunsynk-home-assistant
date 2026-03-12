@@ -13,5 +13,6 @@
     "git+https://github.com/chattersley/sunsynk-python.git#egg=sunsynk-api-client"
   ],
   "ssdp": [],
-  "zeroconf": []
+  "zeroconf": [],
+  "version": "1.0.0"
 }
