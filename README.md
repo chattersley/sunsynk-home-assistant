@@ -45,9 +45,39 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 ```bash
 # Install dependencies
 uv sync
-
-# Run the main script
-uv run python main.py
 ```
 
 The Python client library is sourced from [chattersley/sunsynk-python](https://github.com/chattersley/sunsynk-python).
+
+### Local data fetch test
+
+`main.py` fetches a full snapshot of your SunSynk data and prints it as JSON — useful for verifying credentials and inspecting the API response without running Home Assistant.
+
+**1. Create your `.env` file**
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in your credentials:
+
+```ini
+SUNSYNK_EMAIL=you@example.com
+SUNSYNK_PASSWORD=your_password
+SUNSYNK_REGION=0        # 0 = pv.inteless.com  |  1 = api.sunsynk.net
+LOG_LEVEL=INFO          # DEBUG or TRACE for verbose output
+```
+
+`.env` is listed in `.gitignore` and will never be committed.
+
+**2. Run the script**
+
+```bash
+uv run python main.py
+```
+
+The output is a JSON object containing plants, inverters, battery, grid, PV, load, events, and error counters. Pipe it through `jq` for easier reading:
+
+```bash
+uv run python main.py | jq .
+```
