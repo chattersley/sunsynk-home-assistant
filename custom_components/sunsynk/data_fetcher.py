@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 import logging
 import time
 from typing import Any
@@ -24,6 +24,32 @@ def _trace(logger: logging.Logger, msg: str, *args: Any) -> None:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+# Error tracking categories matching Node-RED implementation
+ERROR_CATEGORIES = ("Bearer", "Events", "Updates", "Flow", "InvList", "InvParam")
+
+
+class ErrorTracker:
+    """Track API errors by category."""
+
+    def __init__(self) -> None:
+        self._errors: dict[str, dict[str, Any]] = {
+            cat: {"count": 0, "payload": "", "date": ""}
+            for cat in ERROR_CATEGORIES
+        }
+
+    def record(self, category: str, error: Exception) -> None:
+        """Record an error in the given category."""
+        entry = self._errors.get(category)
+        if entry is None:
+            return
+        entry["count"] += 1
+        entry["payload"] = str(error)[:16]
+        entry["date"] = datetime.now().isoformat()
+
+    def as_dict(self) -> dict[str, dict[str, Any]]:
+        """Return a copy of all error data."""
+        return {k: dict(v) for k, v in self._errors.items()}
 
 # Buffer in seconds before token expiry to trigger re-authentication
 _TOKEN_EXPIRY_BUFFER = 60
@@ -79,9 +105,19 @@ class TokenManager:
         return expired
 
 
-def _fetch_successful(fetch_fn: Callable) -> Any | None:
+def _fetch_successful(
+    fetch_fn: Callable,
+    error_tracker: ErrorTracker | None = None,
+    error_category: str | None = None,
+) -> Any | None:
     """Call a fetch function and return its data if successful."""
-    res = fetch_fn()
+    try:
+        res = fetch_fn()
+    except Exception as err:
+        _LOGGER.debug("_fetch_successful: exception from %s: %s", getattr(fetch_fn, "__name__", "?"), err)
+        if error_tracker and error_category:
+            error_tracker.record(error_category, err)
+        return None
     _LOGGER.debug(
         "_fetch_successful: fn=%s success=%s",
         getattr(fetch_fn, "__name__", repr(fetch_fn)),
@@ -95,7 +131,7 @@ def _fetch_successful(fetch_fn: Callable) -> Any | None:
     return None
 
 
-def _fetch_inverter_data(client: SunSynk, sn: str) -> dict:
+def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) -> dict:
     """Fetch all realtime data for a single inverter."""
     _LOGGER.debug("_fetch_inverter_data: sn=%s", sn)
     fetchers: list[tuple[str, Callable]] = [
@@ -114,14 +150,14 @@ def _fetch_inverter_data(client: SunSynk, sn: str) -> dict:
     result = {}
     for key, fn in fetchers:
         _LOGGER.debug("Fetching inverter data: sn=%s key=%s", sn, key)
-        data = _fetch_successful(fn)
+        data = _fetch_successful(fn, error_tracker, "InvParam")
         result[key] = data
         _trace(_LOGGER, "Inverter %s[%s]: %s", sn, key, data)
 
     return result
 
 
-def _fetch_system_data(client: SunSynk) -> dict:
+def _fetch_system_data(client: SunSynk, error_tracker: ErrorTracker) -> dict:
     """Fetch gateways, events, and notifications."""
     _LOGGER.debug("_fetch_system_data: start")
     data: dict = {
@@ -139,7 +175,12 @@ def _fetch_system_data(client: SunSynk) -> dict:
 
     for event_type in [1, 2, 3]:
         _LOGGER.debug("Fetching events: type=%d", event_type)
-        events_res = client.events.get_events(type_=event_type)
+        try:
+            events_res = client.events.get_events(type_=event_type)
+        except Exception as err:
+            _LOGGER.debug("Events type=%d fetch error: %s", event_type, err)
+            error_tracker.record("Events", err)
+            continue
         _LOGGER.debug(
             "Events type=%d: success=%s has_data=%s",
             event_type,
@@ -151,7 +192,7 @@ def _fetch_system_data(client: SunSynk) -> dict:
             _trace(_LOGGER, "Events type=%d: %s", event_type, events_res.data.record)
 
     _LOGGER.debug("Fetching notifications")
-    msgs_res = _fetch_successful(client.notifications.get_messages)
+    msgs_res = _fetch_successful(client.notifications.get_messages, error_tracker, "Events")
     if msgs_res:
         data["notifications"] = msgs_res.infos
         _LOGGER.debug("Notifications found: %d", len(msgs_res.infos))
@@ -160,7 +201,7 @@ def _fetch_system_data(client: SunSynk) -> dict:
     return data
 
 
-def _fetch_plant_data(client: SunSynk, plant: Any) -> dict:
+def _fetch_plant_data(client: SunSynk, plant: Any, error_tracker: ErrorTracker) -> dict:
     """Fetch flow and inverter data for a single plant."""
     plant_id = str(plant.id)
     plant_name = getattr(plant, "name", plant_id)
@@ -175,13 +216,19 @@ def _fetch_plant_data(client: SunSynk, plant: Any) -> dict:
 
     _LOGGER.debug("Fetching plant flow: plant_id=%s", plant_id)
     plant_data["flow"] = _fetch_successful(
-        lambda: client.plants.get_plant_flow(plant_id=plant_id)
+        lambda: client.plants.get_plant_flow(plant_id=plant_id),
+        error_tracker, "Flow",
     )
     _LOGGER.debug("Plant flow fetched: plant_id=%s has_flow=%s", plant_id, plant_data["flow"] is not None)
     _trace(_LOGGER, "Plant flow: %s", plant_data["flow"])
 
     _LOGGER.debug("Fetching inverters for plant_id=%s", plant_id)
-    inv_res = client.inverters.get_plant_inverters(plant_id=plant_id)
+    try:
+        inv_res = client.inverters.get_plant_inverters(plant_id=plant_id)
+    except Exception as err:
+        _LOGGER.exception("Error fetching inverter list for plant %s", plant_id)
+        error_tracker.record("InvList", err)
+        return plant_data
     _LOGGER.debug(
         "Inverters response: plant_id=%s success=%s",
         plant_id,
@@ -199,9 +246,10 @@ def _fetch_plant_data(client: SunSynk, plant: Any) -> dict:
     for inv in inverter_list:
         _LOGGER.debug("Processing inverter: sn=%s", inv.sn)
         try:
-            inv_data = _fetch_inverter_data(client, inv.sn)
+            inv_data = _fetch_inverter_data(client, inv.sn, error_tracker)
         except Exception:
             _LOGGER.exception("Error fetching data for inverter %s", inv.sn)
+            error_tracker.record("InvParam", Exception(f"inverter {inv.sn}"))
             inv_data = {}
         inv_data["info"] = inv
         _trace(_LOGGER, "Inverter %s info: %s", inv.sn, inv)
@@ -210,12 +258,25 @@ def _fetch_plant_data(client: SunSynk, plant: Any) -> dict:
     return plant_data
 
 
-def fetch_all_data_sync(token_manager: TokenManager, region_idx: int) -> dict:
+def fetch_all_data_sync(
+    token_manager: TokenManager,
+    region_idx: int,
+    error_tracker: ErrorTracker | None = None,
+) -> dict:
     """Sync function to fetch all data from SunSynk (for executor)."""
     _LOGGER.debug("fetch_all_data_sync: region_idx=%d", region_idx)
 
+    if error_tracker is None:
+        error_tracker = ErrorTracker()
+
+    try:
+        token = token_manager.get_token()
+    except Exception as err:
+        error_tracker.record("Bearer", err)
+        raise
+
     with SunSynk(
-        bearer_auth=token_manager.get_token(),
+        bearer_auth=token,
         server_idx=region_idx,
     ) as client:
         _LOGGER.debug("SunSynk client created, fetching plants")
@@ -232,11 +293,14 @@ def fetch_all_data_sync(token_manager: TokenManager, region_idx: int) -> dict:
         _LOGGER.debug("Plants found: count=%d", len(plant_list))
         _trace(_LOGGER, "Plant list: %s", plant_list)
 
-        data = _fetch_system_data(client)
+        data = _fetch_system_data(client, error_tracker)
         data["plants"] = {}
         for plant in plant_list:
             _LOGGER.debug("Processing plant: id=%s name=%s", plant.id, getattr(plant, "name", "?"))
-            data["plants"][plant.id] = _fetch_plant_data(client, plant)
+            data["plants"][plant.id] = _fetch_plant_data(client, plant, error_tracker)
+
+    data["errors"] = error_tracker.as_dict()
+    data["last_update"] = datetime.now().isoformat()
 
     _LOGGER.debug(
         "fetch_all_data_sync complete: plants=%d gateways=%d notifications=%d",
@@ -245,3 +309,42 @@ def fetch_all_data_sync(token_manager: TokenManager, region_idx: int) -> dict:
         len(data["notifications"]),
     )
     return data
+
+
+def write_settings_sync(
+    token_manager: TokenManager,
+    region_idx: int,
+    sn: str,
+    settings: dict[str, str],
+    error_tracker: ErrorTracker | None = None,
+) -> dict[str, Any]:
+    """Write settings to an inverter. Returns response dict with code/msg."""
+    _LOGGER.debug("write_settings_sync: sn=%s settings=%s", sn, settings)
+
+    if error_tracker is None:
+        error_tracker = ErrorTracker()
+
+    try:
+        token = token_manager.get_token()
+    except Exception as err:
+        error_tracker.record("Bearer", err)
+        raise
+
+    with SunSynk(
+        bearer_auth=token,
+        server_idx=region_idx,
+    ) as client:
+        try:
+            resp = client.settings.write_inverter_settings(
+                sn=sn,
+                body=settings,
+            )
+        except Exception as err:
+            _LOGGER.exception("Error writing settings for inverter %s", sn)
+            error_tracker.record("Updates", err)
+            raise
+
+    code = getattr(resp, "code", None)
+    msg = getattr(resp, "msg", None)
+    _LOGGER.debug("write_settings_sync result: code=%s msg=%s", code, msg)
+    return {"code": code, "msg": msg}

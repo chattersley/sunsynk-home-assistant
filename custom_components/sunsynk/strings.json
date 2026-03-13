@@ -20,6 +20,17 @@
       "already_configured": "This SunSynk account is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "update_interval": "Update interval (seconds)",
+          "plant_ignore_list": "Plant IDs to ignore (comma-separated)"
+        },
+        "description": "Configure SunSynk integration options"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "plant_power": {
