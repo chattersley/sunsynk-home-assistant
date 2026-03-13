@@ -10,3 +10,8 @@ dependencies = [
 
 [tool.uv.sources]
 sunsynk-api-client = { git = "https://github.com/chattersley/sunsynk-python" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

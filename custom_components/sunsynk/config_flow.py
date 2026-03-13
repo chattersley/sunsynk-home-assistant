@@ -8,12 +8,20 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigFlowResult, OptionsFlow
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
 from .auth import authenticate
-from .const import CONF_EMAIL, CONF_PASSWORD, CONF_REGION, REGIONS
+from .const import (
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_REGION,
+    CONF_PLANT_IGNORE_LIST,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
+    REGIONS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +61,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
 
     VERSION = 1
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlow:
+        """Get the options flow handler."""
+        return SunSynkOptionsFlow(config_entry)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -82,6 +98,40 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+
+
+class SunSynkOptionsFlow(OptionsFlow):
+    """Handle options for SunSynk."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialise options flow."""
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = self._config_entry.options
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_UPDATE_INTERVAL,
+                        default=current.get(
+                            CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=30, max=600)),
+                    vol.Optional(
+                        CONF_PLANT_IGNORE_LIST,
+                        default=current.get(CONF_PLANT_IGNORE_LIST, ""),
+                    ): str,
+                }
+            ),
         )
 
 
