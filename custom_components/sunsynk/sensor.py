@@ -675,8 +675,37 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
             defaults = {"power": 0}
         elif self._source_type == "output":
             defaults = {"internalpowerusage": 0}
+        elif self._source_type == "battery":
+            defaults = {"soc": 0, "power": 0}
+        elif self._source_type == "input":
+            defaults = {"power": 0, "1_power": 0, "2_power": 0}
+        elif self._source_type == "temp":
+            defaults = {"battery": 0, "ac": 0, "dc": 0}
         else:
             defaults = {}
+
+        # --- Temp sensor is a special case: composite from temp + battery sources ---
+        if self._source_type == "temp":
+            attrs: dict[str, Any] = dict(defaults)
+            temp_source = _get_source_obj(
+                self.coordinator, self._plant_id, self._sn, "temp",
+            )
+            if temp_source and hasattr(temp_source, "infos") and temp_source.infos:
+                latest = temp_source.infos[-1]
+                dc_val = _safe_float(getattr(latest, "dc_temp", None))
+                ac_val = _safe_float(getattr(latest, "igbt_temp", None))
+                if dc_val is not None:
+                    attrs["dc"] = dc_val
+                if ac_val is not None:
+                    attrs["ac"] = ac_val
+            batt_source = _get_source_obj(
+                self.coordinator, self._plant_id, self._sn, "battery",
+            )
+            if batt_source:
+                batt_temp = _safe_float(getattr(batt_source, "temp", None))
+                if batt_temp is not None:
+                    attrs["battery"] = batt_temp
+            return attrs
 
         source = _get_source_obj(
             self.coordinator, self._plant_id, self._sn, self._source_type,
@@ -684,18 +713,26 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
         if not source:
             return defaults
 
-        attrs: dict[str, Any] = (
+        dumped: dict[str, Any] = (
             source.model_dump() if hasattr(source, "model_dump") else dict(source.__dict__)
         )
+        # Merge: defaults first, then dumped on top — ensures keys stripped
+        # by model_serializer (None optionals) still have fallback values.
+        attrs = {**defaults, **dumped}
         if self._source_type == "grid":
-            attrs["power"] = attrs.get("pac")
-            attrs["gridonline"] = attrs.get("status")
+            attrs["power"] = attrs.get("pac", 0)
+            attrs["gridonline"] = attrs.get("status", 0)
         elif self._source_type == "load":
-            attrs["power"] = attrs.get("total_power")
+            attrs["power"] = attrs.get("total_power", 0)
         elif self._source_type == "output":
             attrs["internalpowerusage"] = _compute_internal_power_usage(
                 self.coordinator, self._plant_id, self._sn,
-            )
+            ) or 0
+        elif self._source_type == "input":
+            attrs["power"] = attrs.get("pac", 0)
+            pv_iv = attrs.get("pv_iv") or []
+            attrs["1_power"] = pv_iv[0].get("ppv", 0) if len(pv_iv) > 0 else 0
+            attrs["2_power"] = pv_iv[1].get("ppv", 0) if len(pv_iv) > 1 else 0
         return attrs
 
 
