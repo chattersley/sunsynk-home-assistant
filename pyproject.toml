@@ -6,12 +6,10 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "cryptography>=46.0.5",
+    "homeassistant>=2026.2.3",
     "python-dotenv>=1.2.2",
-    "sunsynk-api-client",
+    "sunsynk-python>=0.1.8",
 ]
-
-[tool.uv.sources]
-sunsynk-api-client = { git = "https://github.com/chattersley/sunsynk-python" }
 
 [dependency-groups]
 dev = [
