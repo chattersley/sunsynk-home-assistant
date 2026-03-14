@@ -606,6 +606,26 @@ class SunSynkConsolidatedSensor(SunSynkBaseSensor):
 
 
 # ---------------------------------------------------------------------------
+# Helper: compute internal power usage for usable inverter sensor
+# ---------------------------------------------------------------------------
+
+def _compute_internal_power_usage(
+    coordinator: Any, plant_id: int, sn: str,
+) -> float | None:
+    """Return internal power usage: pv + grid + battery - load."""
+    inv_data = _get_inv_data(coordinator, plant_id, sn)
+    if not inv_data:
+        return None
+    pv   = _safe_float(getattr(inv_data.get("input"),   "pac",         None))
+    grid = _safe_float(getattr(inv_data.get("grid"),    "pac",         None))
+    batt = _safe_float(getattr(inv_data.get("battery"), "power",       None))
+    load = _safe_float(getattr(inv_data.get("load"),    "total_power", None))
+    if any(v is None for v in (pv, grid, batt, load)):
+        return None
+    return round(pv + grid + batt - load, 3)
+
+
+# ---------------------------------------------------------------------------
 # Raw data sensor (replicates old "usable" container sensor contract)
 # ---------------------------------------------------------------------------
 
@@ -615,6 +635,8 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
     Replicates the old 'sunsynk_usable_*' sensor contract so that
     existing template sensors in configuration.yaml continue to work.
     """
+
+    _attr_has_entity_name = False
 
     def __init__(
         self,
@@ -646,17 +668,25 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Return all response fields as flat attributes."""
+        """Return all response fields as flat attributes with legacy aliases."""
         source = _get_source_obj(
             self.coordinator, self._plant_id, self._sn, self._source_type,
         )
         if not source:
             return None
-        if hasattr(source, "model_fields"):
-            return {k: getattr(source, k, None) for k in source.model_fields}
-        if hasattr(source, "__dict__"):
-            return dict(source.__dict__)
-        return None
+        attrs: dict[str, Any] = (
+            source.model_dump() if hasattr(source, "model_dump") else dict(source.__dict__)
+        )
+        if self._source_type == "grid":
+            attrs["power"] = attrs.get("pac")
+            attrs["gridonline"] = attrs.get("status")
+        elif self._source_type == "load":
+            attrs["power"] = attrs.get("total_power")
+        elif self._source_type == "output":
+            attrs["internalpowerusage"] = _compute_internal_power_usage(
+                self.coordinator, self._plant_id, self._sn,
+            )
+        return attrs
 
 
 # ---------------------------------------------------------------------------
@@ -1082,10 +1112,14 @@ def _create_computed_sensors(
         ))
 
     # --- Raw data sensors (usable containers for template sensor compatibility) ---
-    for source_type, label in (("grid", "Grid"), ("load", "Load"), ("output", "Inverter")):
+    for source_type, name in (
+        ("grid",   "SunSynk Usable Grid"),
+        ("load",   "SunSynk Usable Load"),
+        ("output", "SunSynk Usable Inverter"),
+    ):
         if inv_data.get(source_type):
             entities.append(SunSynkRawDataSensor(
-                coordinator, plant_id, sn, source_type, f"Usable {label} Data",
+                coordinator, plant_id, sn, source_type, name,
             ))
 
     return entities
