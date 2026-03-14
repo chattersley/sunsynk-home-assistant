@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -317,9 +318,9 @@ class SunSynkInverterTempSensor(SunSynkBaseSensor):
         day_res = _get_source_obj(
             self.coordinator, self._plant_id, self._sn, "temp",
         )
-        if not day_res or not day_res.data or not day_res.data.infos:
+        if not day_res or not day_res.infos:
             return None
-        return day_res.data.infos[-1]
+        return day_res.infos[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -504,12 +505,13 @@ class SunSynkErrorSensor(SunSynkBaseSensor):
 
     def __init__(self, coordinator: Any) -> None:
         """Initialise the error sensor."""
-        super().__init__(coordinator, "errors", "API Errors")
+        super().__init__(coordinator, "errors", "API Errors", state_class=None)
 
     @property
-    def native_value(self) -> str:
-        """Return empty string (errors are in attributes)."""
-        return ""
+    def native_value(self) -> int:
+        """Return total error count across all categories."""
+        errors = self.coordinator.data.get("errors", {})
+        return sum(info.get("count", 0) for info in errors.values())
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -537,11 +539,12 @@ class SunSynkLastUpdateSensor(SunSynkBaseSensor):
         super().__init__(
             coordinator, "stats_last_update", "Stats Last Update",
             device_class=SensorDeviceClass.TIMESTAMP,
+            state_class=None,
         )
 
     @property
-    def native_value(self) -> str | None:
-        """Return the last update ISO timestamp."""
+    def native_value(self):
+        """Return the last update as a timezone-aware datetime."""
         return self.coordinator.data.get("last_update")
 
 
@@ -600,6 +603,60 @@ class SunSynkConsolidatedSensor(SunSynkBaseSensor):
                 total += val
                 found_any = True
         return round(total, 3) if found_any else None
+
+
+# ---------------------------------------------------------------------------
+# Raw data sensor (replicates old "usable" container sensor contract)
+# ---------------------------------------------------------------------------
+
+class SunSynkRawDataSensor(SunSynkBaseSensor):
+    """Exposes all fields of an API response object as state attributes.
+
+    Replicates the old 'sunsynk_usable_*' sensor contract so that
+    existing template sensors in configuration.yaml continue to work.
+    """
+
+    def __init__(
+        self,
+        coordinator: Any,
+        plant_id: int,
+        sn: str,
+        source_type: str,
+        name: str,
+    ) -> None:
+        """Initialise the raw data sensor."""
+        super().__init__(
+            coordinator,
+            f"usable_{source_type}_{sn}",
+            name,
+            state_class=None,
+        )
+        self._plant_id = plant_id
+        self._sn = sn
+        self._source_type = source_type
+        self._attr_device_info = _inverter_device_info(plant_id, sn)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return 'ok' when data is available, else None."""
+        source = _get_source_obj(
+            self.coordinator, self._plant_id, self._sn, self._source_type,
+        )
+        return "ok" if source else None
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return all response fields as flat attributes."""
+        source = _get_source_obj(
+            self.coordinator, self._plant_id, self._sn, self._source_type,
+        )
+        if not source:
+            return None
+        if hasattr(source, "model_fields"):
+            return {k: getattr(source, k, None) for k in source.model_fields}
+        if hasattr(source, "__dict__"):
+            return dict(source.__dict__)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -674,7 +731,7 @@ def _create_inverter_sensors(
             ("status", "Battery Status", None, None, None),
             ("charge_current_limit", "Battery Charge Current Limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
             ("discharge_current_limit", "Battery Discharge Current Limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
-            ("correct_cap", "Battery Capacity", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.MEASUREMENT),
+            ("correct_cap", "Battery Capacity", UnitOfEnergy.KILO_WATT_HOUR, None, None),
             ("current", "Battery Current", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
             ("power", "Battery Power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             ("etotal_chg", "Battery Total Charge", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
@@ -1023,6 +1080,13 @@ def _create_computed_sensors(
             "Internal Power Usage", _internal_power,
             UnitOfPower.KILO_WATT, SensorDeviceClass.POWER,
         ))
+
+    # --- Raw data sensors (usable containers for template sensor compatibility) ---
+    for source_type, label in (("grid", "Grid"), ("load", "Load"), ("output", "Inverter")):
+        if inv_data.get(source_type):
+            entities.append(SunSynkRawDataSensor(
+                coordinator, plant_id, sn, source_type, f"Usable {label} Data",
+            ))
 
     return entities
 
