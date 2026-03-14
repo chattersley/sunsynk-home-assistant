@@ -767,16 +767,16 @@ def _create_plant_flow_sensors(
 ) -> list[SensorEntity]:
     """Create sensor entities for plant energy flow."""
     flow_defs: list[tuple[str, str, str, SensorDeviceClass]] = [
-        ("pvPower", "PV Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("battPower", "Battery Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("gridOrMeterPower", "Grid Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("loadOrEpsPower", "Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("pv_power", "PV Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("batt_power", "Battery Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("grid_or_meter_power", "Grid Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("load_or_eps_power", "Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
         ("soc", "SOC", PERCENTAGE, SensorDeviceClass.BATTERY),
-        ("genPower", "Generator Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("minPower", "Min Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("smartLoadPower", "Smart Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("homeLoadPower", "Home Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
-        ("upsLoadPower", "UPS Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("gen_power", "Generator Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("min_power", "Min Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("smart_load_power", "Smart Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("home_load_power", "Home Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+        ("ups_load_power", "UPS Load Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
     ]
     return [
         SunSynkPlantFlowSensor(coordinator, plant_id, key, name, unit, dc)
