@@ -669,11 +669,21 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return all response fields as flat attributes with legacy aliases."""
+        if self._source_type == "grid":
+            defaults: dict[str, Any] = {"power": 0, "gridonline": 0}
+        elif self._source_type == "load":
+            defaults = {"power": 0}
+        elif self._source_type == "output":
+            defaults = {"internalpowerusage": 0}
+        else:
+            defaults = {}
+
         source = _get_source_obj(
             self.coordinator, self._plant_id, self._sn, self._source_type,
         )
         if not source:
-            return None
+            return defaults
+
         attrs: dict[str, Any] = (
             source.model_dump() if hasattr(source, "model_dump") else dict(source.__dict__)
         )
