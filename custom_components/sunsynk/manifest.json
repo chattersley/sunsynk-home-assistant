@@ -10,7 +10,8 @@
   "issue_tracker": "https://github.com/chattersley/sunsynk_ha/issues",
   "quality_scale": "bronze",
   "requirements": [
-    "git+https://github.com/chattersley/sunsynk-python.git#egg=sunsynk-api-client"
+    "cryptography>=46.0.5",
+    "sunsynk-python>=0.1.8"
   ],
   "ssdp": [],
   "zeroconf": [],
