@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import logging
 import time
 from typing import Any
@@ -300,7 +300,7 @@ def fetch_all_data_sync(
             data["plants"][plant.id] = _fetch_plant_data(client, plant, error_tracker)
 
     data["errors"] = error_tracker.as_dict()
-    data["last_update"] = datetime.now().isoformat()
+    data["last_update"] = datetime.now(tz=timezone.utc)
 
     _LOGGER.debug(
         "fetch_all_data_sync complete: plants=%d gateways=%d notifications=%d",
