@@ -649,7 +649,7 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
         """Initialise the raw data sensor."""
         super().__init__(
             coordinator,
-            f"usable_{source_type}_{sn}",
+            f"usable_{source_type}",
             name,
             state_class=None,
         )
