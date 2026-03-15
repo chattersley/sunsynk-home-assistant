@@ -6,14 +6,11 @@ import asyncio
 import json
 import os
 import pathlib
-import threading
-from collections.abc import Generator
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import DATA_INTEGRATIONS, Integration
 from homeassistant.runner import HassEventLoopPolicy
-
 
 INTEGRATION_DIR = pathlib.Path(__file__).parent.parent / "custom_components" / "sunsynk"
 
