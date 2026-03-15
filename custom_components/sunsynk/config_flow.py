@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
@@ -16,11 +15,12 @@ from .auth import authenticate
 from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
-    CONF_REGION,
     CONF_PLANT_IGNORE_LIST,
+    CONF_REGION,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     REGIONS,
+    SunSynkAuthError,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,9 +49,12 @@ async def validate_input(
             password,
             region_idx,
         )
-    except Exception as err:
+    except SunSynkAuthError as err:
         _LOGGER.error("Failed to authenticate with SunSynk: %s", err)
         raise InvalidAuth from err
+    except Exception as err:
+        _LOGGER.error("Cannot connect to SunSynk: %s", err)
+        raise CannotConnect from err
 
     return {"title": f"SunSynk ({email})"}
 

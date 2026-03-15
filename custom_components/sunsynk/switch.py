@@ -6,40 +6,43 @@ import logging
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_REGION, DOMAIN
+from . import SunSynkConfigEntry, SunSynkCoordinator
+from .const import DOMAIN
 from .data_fetcher import TokenManager, write_settings_sync
+from .helpers import get_inverter_settings, inverter_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
-# Paired timer toggles: (api_key, name, settings_key, paired_api_key, paired_settings_key)
+PARALLEL_UPDATES = 1
+
+# Paired timer toggles: (api_key, translation_key, settings_key, paired_api_key, paired_settings_key)
 TIMER_TOGGLE_DEFS: list[tuple[str, str, str, str, str]] = [
-    ("time1on", "Time 1 On", "time1on", "genTime1on", "gen_time1on"),
-    ("time2on", "Time 2 On", "time2on", "genTime2on", "gen_time2on"),
-    ("time3on", "Time 3 On", "time3on", "genTime3on", "gen_time3on"),
-    ("time4on", "Time 4 On", "time4on", "genTime4on", "gen_time4on"),
-    ("time5on", "Time 5 On", "time5on", "genTime5on", "gen_time5on"),
-    ("time6on", "Time 6 On", "time6on", "genTime6on", "gen_time6on"),
+    ("time1on", "timer_1_on", "time1on", "genTime1on", "gen_time1on"),
+    ("time2on", "timer_2_on", "time2on", "genTime2on", "gen_time2on"),
+    ("time3on", "timer_3_on", "time3on", "genTime3on", "gen_time3on"),
+    ("time4on", "timer_4_on", "time4on", "genTime4on", "gen_time4on"),
+    ("time5on", "timer_5_on", "time5on", "genTime5on", "gen_time5on"),
+    ("time6on", "timer_6_on", "time6on", "genTime6on", "gen_time6on"),
 ]
 
 GEN_TIMER_TOGGLE_DEFS: list[tuple[str, str, str, str, str]] = [
-    ("genTime1on", "Gen Time 1 On", "gen_time1on", "time1on", "time1on"),
-    ("genTime2on", "Gen Time 2 On", "gen_time2on", "time2on", "time2on"),
-    ("genTime3on", "Gen Time 3 On", "gen_time3on", "time3on", "time3on"),
-    ("genTime4on", "Gen Time 4 On", "gen_time4on", "time4on", "time4on"),
-    ("genTime5on", "Gen Time 5 On", "gen_time5on", "time5on", "time5on"),
-    ("genTime6on", "Gen Time 6 On", "gen_time6on", "time6on", "time6on"),
+    ("genTime1on", "gen_timer_1_on", "gen_time1on", "time1on", "time1on"),
+    ("genTime2on", "gen_timer_2_on", "gen_time2on", "time2on", "time2on"),
+    ("genTime3on", "gen_timer_3_on", "gen_time3on", "time3on", "time3on"),
+    ("genTime4on", "gen_timer_4_on", "gen_time4on", "time4on", "time4on"),
+    ("genTime5on", "gen_timer_5_on", "gen_time5on", "time5on", "time5on"),
+    ("genTime6on", "gen_timer_6_on", "gen_time6on", "time6on", "time6on"),
 ]
 
-# Simple boolean toggles: (api_key, name, settings_key)
+# Simple boolean toggles: (api_key, translation_key, settings_key)
 SIMPLE_TOGGLE_DEFS: list[tuple[str, str, str]] = [
-    ("peakAndVallery", "Use Timer", "peak_and_vallery"),
-    ("energyMode", "Energy Mode", "energy_mode"),
+    ("peakAndVallery", "use_timer", "peak_and_vallery"),
+    ("energyMode", "energy_mode", "energy_mode"),
 ]
 
 
@@ -55,18 +58,19 @@ def _api_to_bool(value: Any) -> bool:
     return str(value) in ("1", "true", "True", "on")
 
 
-class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):
+class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore[misc]
     """Switch for timer toggles that must be sent with their paired value."""
 
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
-        coordinator: Any,
+        coordinator: SunSynkCoordinator,
         plant_id: int,
         sn: str,
         api_key: str,
-        name: str,
+        translation_key: str,
         settings_key: str,
         paired_api_key: str,
         paired_settings_key: str,
@@ -84,38 +88,26 @@ class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):
         self._token_manager = token_manager
         self._region_idx = region_idx
         self._attr_unique_id = f"{DOMAIN}_inverter_{sn}_{settings_key}"
-        self._attr_name = name
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"inverter_{sn}")},
-            name=f"SunSynk Inverter {sn}",
-            manufacturer="SunSynk",
-            model="Inverter",
-            serial_number=sn,
-            via_device=(DOMAIN, f"plant_{plant_id}"),
-        )
+        self._attr_translation_key = translation_key
+        self._attr_device_info = inverter_device_info(plant_id, sn)
 
-    def _get_settings(self) -> Any | None:
-        """Get the settings object from coordinator data."""
-        inv_data = (
-            self.coordinator.data.get("plants", {})
-            .get(self._plant_id, {})
-            .get("inverters", {})
-            .get(self._sn, {})
-        )
-        return inv_data.get("settings") if inv_data else None
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return True if the timer is on."""
-        settings = self._get_settings()
-        if not settings:
-            return None
-        val = getattr(settings, self._settings_key, None)
-        return _api_to_bool(val)
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        was_available = getattr(self, "_attr_available", True)
+        settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn)
+        self._attr_available = settings is not None
+        if was_available and settings is None:
+            _LOGGER.warning("Entity %s is now unavailable", self._attr_unique_id)
+        if settings:
+            val = getattr(settings, self._settings_key, None)
+            self._attr_is_on = _api_to_bool(val)
+        else:
+            self._attr_is_on = None
+        super()._handle_coordinator_update()
 
     async def _write_with_pair(self, new_value: bool) -> None:
         """Write this toggle's value along with its paired toggle's current value."""
-        settings = self._get_settings()
+        settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn)
         paired_val = "0"
         if settings:
             paired_raw = getattr(settings, self._paired_settings_key, None)
@@ -144,18 +136,19 @@ class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):
         await self._write_with_pair(False)
 
 
-class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):
+class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore[misc]
     """Switch for simple boolean settings (use timer, energy mode)."""
 
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
-        coordinator: Any,
+        coordinator: SunSynkCoordinator,
         plant_id: int,
         sn: str,
         api_key: str,
-        name: str,
+        translation_key: str,
         settings_key: str,
         token_manager: TokenManager,
         region_idx: int,
@@ -169,30 +162,22 @@ class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):
         self._token_manager = token_manager
         self._region_idx = region_idx
         self._attr_unique_id = f"{DOMAIN}_inverter_{sn}_{settings_key}"
-        self._attr_name = name
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"inverter_{sn}")},
-            name=f"SunSynk Inverter {sn}",
-            manufacturer="SunSynk",
-            model="Inverter",
-            serial_number=sn,
-            via_device=(DOMAIN, f"plant_{plant_id}"),
-        )
+        self._attr_translation_key = translation_key
+        self._attr_device_info = inverter_device_info(plant_id, sn)
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return True if the setting is on."""
-        inv_data = (
-            self.coordinator.data.get("plants", {})
-            .get(self._plant_id, {})
-            .get("inverters", {})
-            .get(self._sn, {})
-        )
-        settings = inv_data.get("settings") if inv_data else None
-        if not settings:
-            return None
-        val = getattr(settings, self._settings_key, None)
-        return _api_to_bool(val)
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        was_available = getattr(self, "_attr_available", True)
+        settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn)
+        self._attr_available = settings is not None
+        if was_available and settings is None:
+            _LOGGER.warning("Entity %s is now unavailable", self._attr_unique_id)
+        if settings:
+            val = getattr(settings, self._settings_key, None)
+            self._attr_is_on = _api_to_bool(val)
+        else:
+            self._attr_is_on = None
+        super()._handle_coordinator_update()
 
     async def _write_value(self, new_value: bool) -> None:
         """Write the setting value."""
@@ -218,14 +203,14 @@ class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SunSynkConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the SunSynk switch platform."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
-    token_manager = data["token_manager"]
-    region_idx = entry.data[CONF_REGION]
+    runtime = entry.runtime_data
+    coordinator = runtime.coordinator
+    token_manager = runtime.token_manager
+    region_idx: int = entry.data["region"]
 
     if not coordinator.data:
         return

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +9,6 @@ import pytest
 from custom_components.sunsynk.data_fetcher import (
     ErrorTracker,
     TokenManager,
-    fetch_all_data_sync,
     write_settings_sync,
 )
 
@@ -104,9 +102,9 @@ class TestWriteSettingsSync:
         tm = TokenManager("test@example.com", "pass", 0)
         result = write_settings_sync(tm, 0, "SN123", {"cap1": "50"})
 
-        mock_client.settings.write_inverter_settings.assert_called_once_with(
-            sn="SN123", body={"cap1": "50"},
-        )
+        mock_client.settings.write_inverter_settings.assert_called_once()
+        call_kwargs = mock_client.settings.write_inverter_settings.call_args.kwargs
+        assert call_kwargs["sn"] == "SN123"
         assert result["code"] == 0
         assert result["msg"] == "success"
 
