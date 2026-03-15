@@ -1,9 +1,16 @@
 """Constants for the SunSynk integration."""
 
-try:
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
     from homeassistant.exceptions import HomeAssistantError
-except ImportError:
-    HomeAssistantError = Exception  # type: ignore[assignment,misc]
+else:
+    try:
+        from homeassistant.exceptions import HomeAssistantError
+    except ImportError:
+        HomeAssistantError = Exception
 
 DOMAIN = "sunsynk_ha"
 

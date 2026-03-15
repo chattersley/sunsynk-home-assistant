@@ -38,6 +38,14 @@ Copy the `custom_components/sunsynk` folder into your Home Assistant `config/cus
 2. Search for **SunSynk**
 3. Enter your SunSynk account email and password
 
+## Removing the Integration
+
+1. Go to **Settings** → **Devices & Services**
+2. Find the **SunSynk** integration entry
+3. Click the three-dot menu (⋮) and select **Delete**
+
+No additional cleanup is needed — the integration does not create any persistent files or side-effects outside of Home Assistant.
+
 ## Development
 
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.

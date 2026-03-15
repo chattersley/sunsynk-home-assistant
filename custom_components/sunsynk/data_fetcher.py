@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import date, datetime, timezone
 import logging
 import time
+from collections.abc import Callable
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sunsynk_api_client import SunSynk
+from sunsynk_api_client.models import WriteInverterSettingsRequestBody
 
 from .auth import AuthResult, authenticate
 from .const import SunSynkApiError
@@ -106,7 +107,7 @@ class TokenManager:
 
 
 def _fetch_successful(
-    fetch_fn: Callable,
+    fetch_fn: Callable[[], Any],
     error_tracker: ErrorTracker | None = None,
     error_category: str | None = None,
 ) -> Any | None:
@@ -131,10 +132,10 @@ def _fetch_successful(
     return None
 
 
-def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) -> dict:
+def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) -> dict[str, Any]:
     """Fetch all realtime data for a single inverter."""
     _LOGGER.debug("_fetch_inverter_data: sn=%s", sn)
-    fetchers: list[tuple[str, Callable]] = [
+    fetchers: list[tuple[str, Callable[[], Any]]] = [
         ("output", lambda: client.inverter_data.get_inverter_output(sn=sn)),
         ("input", lambda: client.inverter_data.get_inverter_input(sn=sn)),
         ("battery", lambda: client.inverter_data.get_battery_realtime(sn=sn)),
@@ -147,7 +148,7 @@ def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) 
         )),
     ]
 
-    result = {}
+    result: dict[str, Any] = {}
     for key, fn in fetchers:
         _LOGGER.debug("Fetching inverter data: sn=%s key=%s", sn, key)
         data = _fetch_successful(fn, error_tracker, "InvParam")
@@ -157,10 +158,10 @@ def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) 
     return result
 
 
-def _fetch_system_data(client: SunSynk, error_tracker: ErrorTracker) -> dict:
+def _fetch_system_data(client: SunSynk, error_tracker: ErrorTracker) -> dict[str, Any]:
     """Fetch gateways, events, and notifications."""
     _LOGGER.debug("_fetch_system_data: start")
-    data: dict = {
+    data: dict[str, Any] = {
         "gateways": [],
         "events": {},
         "notifications": [],
@@ -201,14 +202,14 @@ def _fetch_system_data(client: SunSynk, error_tracker: ErrorTracker) -> dict:
     return data
 
 
-def _fetch_plant_data(client: SunSynk, plant: Any, error_tracker: ErrorTracker) -> dict:
+def _fetch_plant_data(client: SunSynk, plant: Any, error_tracker: ErrorTracker) -> dict[str, Any]:
     """Fetch flow and inverter data for a single plant."""
     plant_id = str(plant.id)
     plant_name = getattr(plant, "name", plant_id)
     _LOGGER.debug("_fetch_plant_data: plant_id=%s name=%s", plant_id, plant_name)
     _trace(_LOGGER, "Plant object: %s", plant)
 
-    plant_data: dict = {
+    plant_data: dict[str, Any] = {
         "info": plant,
         "flow": None,
         "inverters": {},
@@ -239,11 +240,14 @@ def _fetch_plant_data(client: SunSynk, plant: Any, error_tracker: ErrorTracker) 
         _LOGGER.debug("No inverters found for plant_id=%s", plant_id)
         return plant_data
 
-    inverter_list = inv_res.data.infos
+    inverter_list = inv_res.data.infos or []
     _LOGGER.debug("Inverters found: plant_id=%s count=%d", plant_id, len(inverter_list))
     _trace(_LOGGER, "Inverter list: %s", inverter_list)
 
     for inv in inverter_list:
+        if not inv.sn:
+            _LOGGER.debug("Skipping inverter with no serial number")
+            continue
         _LOGGER.debug("Processing inverter: sn=%s", inv.sn)
         try:
             inv_data = _fetch_inverter_data(client, inv.sn, error_tracker)
@@ -262,7 +266,8 @@ def fetch_all_data_sync(
     token_manager: TokenManager,
     region_idx: int,
     error_tracker: ErrorTracker | None = None,
-) -> dict:
+    plant_ignore_list: set[str] | None = None,
+) -> dict[str, Any]:
     """Sync function to fetch all data from SunSynk (for executor)."""
     _LOGGER.debug("fetch_all_data_sync: region_idx=%d", region_idx)
 
@@ -289,22 +294,26 @@ def fetch_all_data_sync(
         if not plants_res or not plants_res.success or not plants_res.data:
             raise SunSynkApiError("Failed to fetch plants from SunSynk")
 
-        plant_list = plants_res.data.infos
+        plant_list = plants_res.data.infos or []
         _LOGGER.debug("Plants found: count=%d", len(plant_list))
         _trace(_LOGGER, "Plant list: %s", plant_list)
 
         data = _fetch_system_data(client, error_tracker)
         data["plants"] = {}
         for plant in plant_list:
+            plant_id_str = str(plant.id)
+            if plant_ignore_list and plant_id_str in plant_ignore_list:
+                _LOGGER.debug("Skipping ignored plant: id=%s name=%s", plant.id, getattr(plant, "name", "?"))
+                continue
             _LOGGER.debug("Processing plant: id=%s name=%s", plant.id, getattr(plant, "name", "?"))
             data["plants"][plant.id] = _fetch_plant_data(client, plant, error_tracker)
 
     data["errors"] = error_tracker.as_dict()
-    data["last_update"] = datetime.now(tz=timezone.utc)
+    data["last_update"] = datetime.now(tz=UTC)
 
     _LOGGER.debug(
         "fetch_all_data_sync complete: plants=%d gateways=%d notifications=%d",
-        len(data["plants"]),
+        len(plant_list),
         len(data["gateways"]),
         len(data["notifications"]),
     )
@@ -337,7 +346,7 @@ def write_settings_sync(
         try:
             resp = client.settings.write_inverter_settings(
                 sn=sn,
-                body=settings,
+                body=WriteInverterSettingsRequestBody(**settings),
             )
         except Exception as err:
             _LOGGER.exception("Error writing settings for inverter %s", sn)

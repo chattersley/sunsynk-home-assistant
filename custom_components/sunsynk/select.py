@@ -3,46 +3,49 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_REGION, DOMAIN, VALID_TIME_SLOTS
+from . import SunSynkConfigEntry, SunSynkCoordinator
+from .const import DOMAIN, VALID_TIME_SLOTS
 from .data_fetcher import TokenManager, write_settings_sync
+from .helpers import get_inverter_settings, inverter_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
-# sellTime1–sellTime6: time slot selection (30-min intervals)
+PARALLEL_UPDATES = 1
+
+# sellTime1-sellTime6: (api_key, translation_key, settings_key)
 SELL_TIME_DEFS: list[tuple[str, str, str]] = [
-    ("sellTime1", "Sell Time 1", "sell_time1"),
-    ("sellTime2", "Sell Time 2", "sell_time2"),
-    ("sellTime3", "Sell Time 3", "sell_time3"),
-    ("sellTime4", "Sell Time 4", "sell_time4"),
-    ("sellTime5", "Sell Time 5", "sell_time5"),
-    ("sellTime6", "Sell Time 6", "sell_time6"),
+    ("sellTime1", "sell_time_1", "sell_time1"),
+    ("sellTime2", "sell_time_2", "sell_time2"),
+    ("sellTime3", "sell_time_3", "sell_time3"),
+    ("sellTime4", "sell_time_4", "sell_time4"),
+    ("sellTime5", "sell_time_5", "sell_time5"),
+    ("sellTime6", "sell_time_6", "sell_time6"),
 ]
 
 SYS_WORK_MODES = ["0", "1", "2", "3"]
 
 
-class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):
+class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[misc]
     """Select entity for sell time slot settings."""
 
     _attr_options = VALID_TIME_SLOTS
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
-        coordinator: Any,
+        coordinator: SunSynkCoordinator,
         plant_id: int,
         sn: str,
         api_key: str,
-        name: str,
+        translation_key: str,
         settings_key: str,
         token_manager: TokenManager,
         region_idx: int,
@@ -56,26 +59,22 @@ class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):
         self._token_manager = token_manager
         self._region_idx = region_idx
         self._attr_unique_id = f"{DOMAIN}_inverter_{sn}_{settings_key}"
-        self._attr_name = name
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"inverter_{sn}")},
-            name=f"SunSynk Inverter {sn}",
-            manufacturer="SunSynk",
-            model="Inverter",
-            serial_number=sn,
-            via_device=(DOMAIN, f"plant_{plant_id}"),
-        )
+        self._attr_translation_key = translation_key
+        self._attr_device_info = inverter_device_info(plant_id, sn)
 
-    @property
-    def current_option(self) -> str | None:
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        was_available = getattr(self, "_attr_available", True)
+        has_settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn) is not None
+        self._attr_available = has_settings
+        if was_available and not has_settings:
+            _LOGGER.warning("Entity %s is now unavailable", self._attr_unique_id)
+        self._attr_current_option = self._compute_current_option() if has_settings else None
+        super()._handle_coordinator_update()
+
+    def _compute_current_option(self) -> str | None:
         """Return the current sell time value."""
-        inv_data = (
-            self.coordinator.data.get("plants", {})
-            .get(self._plant_id, {})
-            .get("inverters", {})
-            .get(self._sn, {})
-        )
-        settings = inv_data.get("settings") if inv_data else None
+        settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn)
         if not settings:
             return None
         val = getattr(settings, self._settings_key, None)
@@ -99,15 +98,16 @@ class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):
         await self.coordinator.async_request_refresh()
 
 
-class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):
-    """Select entity for system work mode (read-only display)."""
+class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[misc]
+    """Select entity for system work mode."""
 
     _attr_options = SYS_WORK_MODES
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
-        coordinator: Any,
+        coordinator: SunSynkCoordinator,
         plant_id: int,
         sn: str,
         token_manager: TokenManager,
@@ -120,26 +120,22 @@ class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):
         self._token_manager = token_manager
         self._region_idx = region_idx
         self._attr_unique_id = f"{DOMAIN}_inverter_{sn}_sys_work_mode"
-        self._attr_name = "System Work Mode"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"inverter_{sn}")},
-            name=f"SunSynk Inverter {sn}",
-            manufacturer="SunSynk",
-            model="Inverter",
-            serial_number=sn,
-            via_device=(DOMAIN, f"plant_{plant_id}"),
-        )
+        self._attr_translation_key = "sys_work_mode"
+        self._attr_device_info = inverter_device_info(plant_id, sn)
 
-    @property
-    def current_option(self) -> str | None:
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        was_available = getattr(self, "_attr_available", True)
+        has_settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn) is not None
+        self._attr_available = has_settings
+        if was_available and not has_settings:
+            _LOGGER.warning("Entity %s is now unavailable", self._attr_unique_id)
+        self._attr_current_option = self._compute_current_option() if has_settings else None
+        super()._handle_coordinator_update()
+
+    def _compute_current_option(self) -> str | None:
         """Return the current work mode."""
-        inv_data = (
-            self.coordinator.data.get("plants", {})
-            .get(self._plant_id, {})
-            .get("inverters", {})
-            .get(self._sn, {})
-        )
-        settings = inv_data.get("settings") if inv_data else None
+        settings = get_inverter_settings(self.coordinator, self._plant_id, self._sn)
         if not settings:
             return None
         val = getattr(settings, "sys_work_mode", None)
@@ -162,14 +158,14 @@ class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SunSynkConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the SunSynk select platform."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
-    token_manager = data["token_manager"]
-    region_idx = entry.data[CONF_REGION]
+    runtime = entry.runtime_data
+    coordinator = runtime.coordinator
+    token_manager = runtime.token_manager
+    region_idx: int = entry.data["region"]
 
     if not coordinator.data:
         return
@@ -181,7 +177,7 @@ async def async_setup_entry(
             if not inv_data.get("settings"):
                 continue
 
-            # Sell time 1–6 select entities
+            # Sell time 1-6 select entities
             for api_key, name, settings_key in SELL_TIME_DEFS:
                 entities.append(SunSynkSellTimeSelect(
                     coordinator, plant_id, sn, api_key, name,

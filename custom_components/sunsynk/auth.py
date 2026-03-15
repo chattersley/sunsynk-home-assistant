@@ -1,14 +1,15 @@
 """SunSynk Authentication module."""
 
 import base64
-from dataclasses import dataclass
 import hashlib
 import logging
 import time
+from dataclasses import dataclass
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from sunsynk_api_client import SunSynk
 
 from .const import SunSynkAuthError
@@ -38,10 +39,12 @@ def _to_pem_public_key(base64_key: str) -> str:
 def _encrypt_password(password: str, public_key_base64: str) -> str:
     """Encrypt password using RSA with PKCS1 padding."""
     public_key_pem = _to_pem_public_key(public_key_base64)
-    public_key = serialization.load_pem_public_key(
+    loaded_key = serialization.load_pem_public_key(
         public_key_pem.encode(), backend=default_backend()
     )
-    encrypted = public_key.encrypt(password.encode("utf-8"), padding.PKCS1v15())
+    if not isinstance(loaded_key, RSAPublicKey):
+        raise TypeError("Expected RSA public key")
+    encrypted = loaded_key.encrypt(password.encode("utf-8"), padding.PKCS1v15())
     return base64.b64encode(encrypted).decode("utf-8")
 
 

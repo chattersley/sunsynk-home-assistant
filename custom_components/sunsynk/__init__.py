@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from datetime import timedelta
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     CONF_EMAIL,
@@ -15,35 +21,46 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
-from .data_fetcher import ErrorTracker, TokenManager, fetch_all_data_sync  # noqa: F401
+from .data_fetcher import ErrorTracker, TokenManager, fetch_all_data_sync
 
 _LOGGER = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
+type SunSynkCoordinator = DataUpdateCoordinator[dict[str, Any]]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+@dataclass
+class SunSynkRuntimeData:
+    """Runtime data for the SunSynk integration."""
+
+    coordinator: SunSynkCoordinator
+    token_manager: TokenManager
+
+
+type SunSynkConfigEntry = ConfigEntry[SunSynkRuntimeData]
+
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SWITCH,
+]
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> bool:
     """Set up SunSynk from a config entry."""
-    from homeassistant.const import Platform
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-    PLATFORMS: list[Platform] = [
-        Platform.SENSOR,
-        Platform.NUMBER,
-        Platform.SELECT,
-        Platform.SWITCH,
-    ]
-
-    region_idx = entry.data[CONF_REGION]
-    email = entry.data[CONF_EMAIL]
-    password = entry.data[CONF_PASSWORD]
+    region_idx: int = entry.data[CONF_REGION]
+    email: str = entry.data[CONF_EMAIL]
+    password: str = entry.data[CONF_PASSWORD]
 
     token_manager = TokenManager(email, password, region_idx)
     error_tracker = ErrorTracker()
 
-    async def async_update_data() -> dict:
+    ignore_raw = entry.options.get(CONF_PLANT_IGNORE_LIST, "")
+    plant_ignore_list = {
+        s.strip() for s in str(ignore_raw).split(",") if s.strip()
+    }
+
+    async def async_update_data() -> dict[str, Any]:
         """Fetch data from SunSynk via executor."""
         try:
             return await hass.async_add_executor_job(
@@ -51,6 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 token_manager,
                 region_idx,
                 error_tracker,
+                plant_ignore_list,
             )
         except Exception as err:
             raise UpdateFailed(
@@ -59,7 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     update_interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
 
-    coordinator = DataUpdateCoordinator(
+    coordinator: SunSynkCoordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=DOMAIN,
@@ -69,10 +87,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
-        "coordinator": coordinator,
-        "token_manager": token_manager,
-    }
+    entry.runtime_data = SunSynkRuntimeData(
+        coordinator=coordinator,
+        token_manager=token_manager,
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -82,26 +100,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(
-    hass: HomeAssistant, entry: ConfigEntry,
+    hass: HomeAssistant, entry: SunSynkConfigEntry,
 ) -> None:
-    """Handle options update — reload the integration."""
+    """Handle options update - reload the integration."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> bool:
     """Unload a config entry."""
-    from homeassistant.const import Platform
-
-    PLATFORMS: list[Platform] = [
-        Platform.SENSOR,
-        Platform.NUMBER,
-        Platform.SELECT,
-        Platform.SWITCH,
-    ]
-
-    if unload_ok := await hass.config_entries.async_unload_platforms(
-        entry, PLATFORMS
-    ):
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
