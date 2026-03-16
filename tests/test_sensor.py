@@ -258,7 +258,7 @@ async def test_sensor_entities_created(
     entity_reg = er.async_get(hass)
     entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha"
+        if e.platform == "sunsynk"
     ]
     # We should have many sensor entities
     sensor_entities = [e for e in entities if e.domain == "sensor"]

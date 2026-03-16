@@ -134,7 +134,7 @@ async def test_select_entities_created(
     entity_reg = er.async_get(hass)
     select_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "select"
+        if e.platform == "sunsynk" and e.domain == "select"
     ]
     # 6 sell times + 1 sys work mode = 7
     assert len(select_entities) == 7
@@ -147,7 +147,7 @@ async def test_sell_time_select_option(
     entity_reg = er.async_get(hass)
     sell_time_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "select" and "sell_time1" in e.unique_id
+        if e.platform == "sunsynk" and e.domain == "select" and "sell_time1" in e.unique_id
     ]
     assert len(sell_time_entities) == 1
     entity_id = sell_time_entities[0].entity_id
@@ -181,7 +181,7 @@ async def test_sys_work_mode_select(
     entity_reg = er.async_get(hass)
     mode_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "select" and "sys_work_mode" in e.unique_id
+        if e.platform == "sunsynk" and e.domain == "select" and "sys_work_mode" in e.unique_id
     ]
     assert len(mode_entities) == 1
     entity_id = mode_entities[0].entity_id
@@ -233,6 +233,6 @@ async def test_select_no_settings(hass: HomeAssistant) -> None:
     entity_reg = er.async_get(hass)
     select_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "select"
+        if e.platform == "sunsynk" and e.domain == "select"
     ]
     assert len(select_entities) == 0

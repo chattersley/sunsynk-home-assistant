@@ -12,7 +12,7 @@ else:
     except ImportError:
         HomeAssistantError = Exception
 
-DOMAIN = "sunsynk_ha"
+DOMAIN = "sunsynk"
 
 
 class SunSynkError(HomeAssistantError):

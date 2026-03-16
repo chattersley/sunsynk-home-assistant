@@ -134,7 +134,7 @@ async def test_switch_entities_created(
     entity_reg = er.async_get(hass)
     switch_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch"
+        if e.platform == "sunsynk" and e.domain == "switch"
     ]
     # 6 timer + 6 gen timer + 2 simple (use_timer, energy_mode) = 14
     assert len(switch_entities) == 14
@@ -147,7 +147,7 @@ async def test_paired_timer_turn_on(
     entity_reg = er.async_get(hass)
     timer1_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch" and e.translation_key == "timer_1_on"
+        if e.platform == "sunsynk" and e.domain == "switch" and e.translation_key == "timer_1_on"
     ]
     assert len(timer1_entities) == 1
     entity_id = timer1_entities[0].entity_id
@@ -184,7 +184,7 @@ async def test_paired_timer_turn_off(
     entity_reg = er.async_get(hass)
     timer1_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch" and e.translation_key == "timer_1_on"
+        if e.platform == "sunsynk" and e.domain == "switch" and e.translation_key == "timer_1_on"
     ]
     entity_id = timer1_entities[0].entity_id
 
@@ -216,7 +216,7 @@ async def test_simple_switch_turn_on(
     entity_reg = er.async_get(hass)
     use_timer_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch" and "peak_and_vallery" in e.unique_id
+        if e.platform == "sunsynk" and e.domain == "switch" and "peak_and_vallery" in e.unique_id
     ]
     assert len(use_timer_entities) == 1
     entity_id = use_timer_entities[0].entity_id
@@ -249,7 +249,7 @@ async def test_simple_switch_turn_off(
     entity_reg = er.async_get(hass)
     use_timer_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch" and "peak_and_vallery" in e.unique_id
+        if e.platform == "sunsynk" and e.domain == "switch" and "peak_and_vallery" in e.unique_id
     ]
     entity_id = use_timer_entities[0].entity_id
 
@@ -300,6 +300,6 @@ async def test_switch_no_settings(hass: HomeAssistant) -> None:
     entity_reg = er.async_get(hass)
     switch_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "switch"
+        if e.platform == "sunsynk" and e.domain == "switch"
     ]
     assert len(switch_entities) == 0
