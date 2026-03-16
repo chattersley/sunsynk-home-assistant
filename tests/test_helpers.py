@@ -43,16 +43,22 @@ class TestSafeFloat:
         assert safe_float(None) is None
 
     def test_string_number(self) -> None:
-        assert safe_float("3.14") == 3.14
+        result = safe_float("3.14")
+        assert result is not None
+        assert abs(result - 3.14) < 1e-9
 
     def test_int(self) -> None:
-        assert safe_float(42) == 42.0
+        result = safe_float(42)
+        assert result is not None
+        assert abs(result - 42.0) < 1e-9
 
     def test_invalid(self) -> None:
         assert safe_float("not_a_number") is None
 
     def test_zero(self) -> None:
-        assert safe_float(0) == 0.0
+        result = safe_float(0)
+        assert result is not None
+        assert abs(result) < 1e-9
 
 
 class TestGetInvData:
@@ -114,6 +120,6 @@ class TestInverterDeviceInfo:
 
     def test_creates_device_info(self) -> None:
         info = inverter_device_info(1, "SN123")
-        assert ("sunsynk_ha", "inverter_SN123") in info["identifiers"]
-        assert info["serial_number"] == "SN123"
-        assert info["via_device"] == ("sunsynk_ha", "plant_1")
+        assert ("sunsynk_ha", "inverter_SN123") in info.get("identifiers", set())
+        assert info.get("serial_number") == "SN123"
+        assert info.get("via_device") == ("sunsynk_ha", "plant_1")
