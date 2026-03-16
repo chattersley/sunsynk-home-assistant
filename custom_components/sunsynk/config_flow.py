@@ -103,6 +103,93 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle reconfiguration of the integration."""
+        errors: dict[str, str] = {}
+        reconfigure_entry = self._get_reconfigure_entry()
+
+        if user_input is not None:
+            try:
+                info = await validate_input(self.hass, user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Unexpected exception during reconfigure")
+                errors["base"] = "unknown"
+            else:
+                await self.async_set_unique_id(user_input[CONF_EMAIL])
+                self._abort_if_unique_id_configured(
+                    updates=user_input,
+                    reload_on_update=True,
+                )
+                return self.async_update_reload_and_abort(
+                    reconfigure_entry,
+                    title=info["title"],
+                    data=user_input,
+                )
+
+        current = reconfigure_entry.data
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_REGION, default=current.get(CONF_REGION, 0)
+                    ): vol.In(REGIONS),
+                    vol.Required(
+                        CONF_EMAIL, default=current.get(CONF_EMAIL, "")
+                    ): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle re-authentication when credentials become invalid."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle re-authentication confirmation."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            reauth_entry = self._get_reauth_entry()
+            new_data = {**reauth_entry.data, **user_input}
+
+            try:
+                await validate_input(self.hass, new_data)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Unexpected exception during reauth")
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    reauth_entry, data=new_data,
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_EMAIL): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
+            errors=errors,
+        )
+
 
 class SunSynkOptionsFlow(OptionsFlow):
     """Handle options for SunSynk."""
@@ -141,6 +228,10 @@ class SunSynkOptionsFlow(OptionsFlow):
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
+    translation_key = "cannot_connect"
+
 
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+    translation_key = "invalid_auth"

@@ -18,13 +18,20 @@ DOMAIN = "sunsynk_ha"
 class SunSynkError(HomeAssistantError):
     """Base exception for SunSynk integration."""
 
+    translation_domain = DOMAIN
+    translation_key = "sunsynk_error"
+
 
 class SunSynkAuthError(SunSynkError):
     """Error during authentication."""
 
+    translation_key = "auth_error"
+
 
 class SunSynkApiError(SunSynkError):
     """Error communicating with the SunSynk API."""
+
+    translation_key = "api_error"
 
 CONF_REGION = "region"
 CONF_EMAIL = "email"

@@ -105,7 +105,7 @@ async def test_user_flow_unknown_error(hass: HomeAssistant) -> None:
         )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["errors"] == {"base": "unknown"}
+    assert result["errors"]["base"] == "unknown"
 
 
 async def test_user_flow_recover_after_error(
@@ -208,3 +208,225 @@ async def test_options_flow_defaults(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options[CONF_UPDATE_INTERVAL] == DEFAULT_UPDATE_INTERVAL
     assert entry.options[CONF_PLANT_IGNORE_LIST] == ""
+
+
+async def test_reauth_flow_success(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test successful re-authentication flow."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_EMAIL: "new@example.com",
+            CONF_PASSWORD: "newpass",
+        },
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_EMAIL] == "new@example.com"
+    assert entry.data[CONF_PASSWORD] == "newpass"
+
+
+async def test_reauth_flow_invalid_auth(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test re-authentication flow with invalid credentials."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["step_id"] == "reauth_confirm"
+
+    mock_authenticate.side_effect = SunSynkAuthError("bad creds")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "wrong",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_auth"}
+
+
+async def test_reauth_flow_cannot_connect(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test re-authentication flow when API is unreachable."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+
+    mock_authenticate.side_effect = ConnectionError("timeout")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "secret123",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_reauth_flow_unknown_error(hass: HomeAssistant) -> None:
+    """Test re-authentication flow with unexpected exception."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+
+    with patch(
+        "custom_components.sunsynk.config_flow.validate_input",
+        side_effect=RuntimeError("something weird"),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_EMAIL: "test@example.com",
+                CONF_PASSWORD: "secret123",
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"]["base"] == "unknown"
+
+
+async def test_reconfigure_flow_success(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test successful reconfiguration flow."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_REGION: 1,
+            CONF_EMAIL: "new@example.com",
+            CONF_PASSWORD: "newpass",
+        },
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_REGION] == 1
+    assert entry.data[CONF_EMAIL] == "new@example.com"
+    assert entry.data[CONF_PASSWORD] == "newpass"
+
+
+async def test_reconfigure_flow_invalid_auth(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test reconfiguration flow with invalid credentials."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+
+    mock_authenticate.side_effect = SunSynkAuthError("bad creds")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_REGION: 0,
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "wrong",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_auth"}
+
+
+async def test_reconfigure_flow_cannot_connect(
+    hass: HomeAssistant, mock_authenticate
+) -> None:
+    """Test reconfiguration flow when API is unreachable."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+
+    mock_authenticate.side_effect = ConnectionError("timeout")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_REGION: 0,
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "secret123",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_reconfigure_flow_unknown_error(hass: HomeAssistant) -> None:
+    """Test reconfiguration flow with unexpected exception."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test@example.com",
+        data=VALID_USER_INPUT,
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+
+    with patch(
+        "custom_components.sunsynk.config_flow.validate_input",
+        side_effect=RuntimeError("something weird"),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_REGION: 0,
+                CONF_EMAIL: "test@example.com",
+                CONF_PASSWORD: "secret123",
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"]["base"] == "unknown"
