@@ -70,7 +70,7 @@ class TestTokenManager:
         tm = TokenManager("test@example.com", "password", 0)
         token = await tm.async_get_token()
         assert token == "test_token"
-        mock_auth.assert_called_once_with("test@example.com", "password", 0)
+        mock_auth.assert_called_once_with("test@example.com", "password", 0, None)
 
     @pytest.mark.asyncio
     @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)

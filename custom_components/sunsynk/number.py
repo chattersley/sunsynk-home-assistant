@@ -8,6 +8,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
@@ -103,6 +104,7 @@ class SunSynkCapNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             self._region_idx,
             self._sn,
             {self._api_key: int_val},
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 
@@ -174,6 +176,7 @@ class SunSynkExtraNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             self._region_idx,
             self._sn,
             {self._api_key: str_val},
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 

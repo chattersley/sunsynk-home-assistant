@@ -6,6 +6,7 @@ import logging
 import time
 from dataclasses import dataclass
 
+import httpx
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -46,9 +47,10 @@ async def async_authenticate(
     username: str,
     password: str,
     region_idx: int,
+    async_client: httpx.AsyncClient | None = None,
 ) -> AuthResult:
     """Authenticate and get bearer token."""
-    async with SunSynk(server_idx=region_idx) as sdk:
+    async with SunSynk(server_idx=region_idx, async_client=async_client) as sdk:
         # Step 1: Get public key
         nonce = int(time.time() * 1000)
         sign_string = f"nonce={nonce}&source=sunsynk"
