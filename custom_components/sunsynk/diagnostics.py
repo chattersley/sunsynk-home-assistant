@@ -14,9 +14,7 @@ REDACT_CONFIG = {CONF_EMAIL, CONF_PASSWORD}
 REDACT_DATA = {"token", "access_token", "refresh_token", "email", "password"}
 
 
-async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: SunSynkConfigEntry
-) -> dict[str, Any]:
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: SunSynkConfigEntry) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data.coordinator
 
@@ -43,9 +41,7 @@ async def async_get_config_entry_diagnostics(
         "config_entry": async_redact_data(entry.as_dict(), REDACT_CONFIG),
         "coordinator": {
             "last_update_success": coordinator.last_update_success,
-            "last_exception": str(coordinator.last_exception)
-            if coordinator.last_exception
-            else None,
+            "last_exception": str(coordinator.last_exception) if coordinator.last_exception else None,
             "update_interval": str(coordinator.update_interval),
         },
         "data_summary": {

@@ -35,8 +35,7 @@ class ErrorTracker:
 
     def __init__(self) -> None:
         self._errors: dict[str, dict[str, Any]] = {
-            cat: {"count": 0, "payload": "", "date": ""}
-            for cat in ERROR_CATEGORIES
+            cat: {"count": 0, "payload": "", "date": ""} for cat in ERROR_CATEGORIES
         }
 
     def record(self, category: str, error: Exception) -> None:
@@ -51,6 +50,7 @@ class ErrorTracker:
     def as_dict(self) -> dict[str, dict[str, Any]]:
         """Return a copy of all error data."""
         return {k: dict(v) for k, v in self._errors.items()}
+
 
 # Buffer in seconds before token expiry to trigger re-authentication
 _TOKEN_EXPIRY_BUFFER = 60
@@ -78,9 +78,7 @@ class TokenManager:
         )
         if self._auth_result is None or expired:
             _LOGGER.debug("Obtaining new SunSynk auth token")
-            self._auth_result = authenticate(
-                self._email, self._password, self._region_idx
-            )
+            self._auth_result = authenticate(self._email, self._password, self._region_idx)
             self._token_obtained_at = time.monotonic()
             _LOGGER.debug(
                 "Token obtained: token_type=%s expires_in=%d",
@@ -143,9 +141,14 @@ def _fetch_inverter_data(client: SunSynk, sn: str, error_tracker: ErrorTracker) 
         ("load", lambda: client.inverter_data.get_load_realtime(sn=sn)),
         ("gen", lambda: client.inverter_data.get_gen_realtime(sn=sn)),
         ("settings", lambda: client.settings.read_inverter_settings(sn=sn)),
-        ("temp", lambda: client.inverter_data.get_inverter_daily_output(
-            sn=sn, date_=date.today(), column="dc_temp,igbt_temp",
-        )),
+        (
+            "temp",
+            lambda: client.inverter_data.get_inverter_daily_output(
+                sn=sn,
+                date_=date.today(),
+                column="dc_temp,igbt_temp",
+            ),
+        ),
     ]
 
     result: dict[str, Any] = {}
@@ -218,7 +221,8 @@ def _fetch_plant_data(client: SunSynk, plant: Any, error_tracker: ErrorTracker) 
     _LOGGER.debug("Fetching plant flow: plant_id=%s", plant_id)
     plant_data["flow"] = _fetch_successful(
         lambda: client.plants.get_plant_flow(plant_id=plant_id),
-        error_tracker, "Flow",
+        error_tracker,
+        "Flow",
     )
     _LOGGER.debug("Plant flow fetched: plant_id=%s has_flow=%s", plant_id, plant_data["flow"] is not None)
     _trace(_LOGGER, "Plant flow: %s", plant_data["flow"])

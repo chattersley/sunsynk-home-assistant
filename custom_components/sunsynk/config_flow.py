@@ -34,9 +34,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-async def validate_input(
-    hass: HomeAssistant, data: dict[str, Any]
-) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     region_idx = data[CONF_REGION]
     email = data[CONF_EMAIL]
@@ -72,14 +70,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
         """Get the options flow handler."""
         return SunSynkOptionsFlow(config_entry)
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         if user_input is None:
-            return self.async_show_form(
-                step_id="user", data_schema=STEP_USER_DATA_SCHEMA
-            )
+            return self.async_show_form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA)
 
         errors: dict[str, str] = {}
 
@@ -95,17 +89,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
         else:
             await self.async_set_unique_id(user_input[CONF_EMAIL])
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=info["title"], data=user_input
-            )
+            return self.async_create_entry(title=info["title"], data=user_input)
 
-        return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors)
 
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle reconfiguration of the integration."""
         errors: dict[str, str] = {}
         reconfigure_entry = self._get_reconfigure_entry()
@@ -137,27 +125,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
             step_id="reconfigure",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        CONF_REGION, default=current.get(CONF_REGION, 0)
-                    ): vol.In(REGIONS),
-                    vol.Required(
-                        CONF_EMAIL, default=current.get(CONF_EMAIL, "")
-                    ): str,
+                    vol.Required(CONF_REGION, default=current.get(CONF_REGION, 0)): vol.In(REGIONS),
+                    vol.Required(CONF_EMAIL, default=current.get(CONF_EMAIL, "")): str,
                     vol.Required(CONF_PASSWORD): str,
                 }
             ),
             errors=errors,
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle re-authentication when credentials become invalid."""
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle re-authentication confirmation."""
         errors: dict[str, str] = {}
 
@@ -176,7 +156,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
                 errors["base"] = "unknown"
             else:
                 return self.async_update_reload_and_abort(
-                    reauth_entry, data=new_data,
+                    reauth_entry,
+                    data=new_data,
                 )
 
         return self.async_show_form(
@@ -198,9 +179,7 @@ class SunSynkOptionsFlow(OptionsFlow):
         """Initialise options flow."""
         self._config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
@@ -212,9 +191,7 @@ class SunSynkOptionsFlow(OptionsFlow):
                 {
                     vol.Optional(
                         CONF_UPDATE_INTERVAL,
-                        default=current.get(
-                            CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
-                        ),
+                        default=current.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
                     ): vol.All(vol.Coerce(int), vol.Range(min=30, max=600)),
                     vol.Optional(
                         CONF_PLANT_IGNORE_LIST,

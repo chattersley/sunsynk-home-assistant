@@ -65,9 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
     error_tracker = ErrorTracker()
 
     ignore_raw = entry.options.get(CONF_PLANT_IGNORE_LIST, "")
-    plant_ignore_list = {
-        s.strip() for s in str(ignore_raw).split(",") if s.strip()
-    }
+    plant_ignore_list = {s.strip() for s in str(ignore_raw).split(",") if s.strip()}
 
     consecutive_failures = 0
 
@@ -83,9 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
                 plant_ignore_list,
             )
         except SunSynkAuthError as err:
-            raise ConfigEntryAuthFailed(
-                f"Authentication failed: {err}"
-            ) from err
+            raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
         except Exception as err:
             consecutive_failures += 1
             if consecutive_failures >= CONSECUTIVE_FAILURE_THRESHOLD:
@@ -102,9 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
                         "count": str(consecutive_failures),
                     },
                 )
-            raise UpdateFailed(
-                f"Error communicating with SunSynk: {err}"
-            ) from err
+            raise UpdateFailed(f"Error communicating with SunSynk: {err}") from err
 
         # Success — reset counter and clear any repair issue
         if consecutive_failures >= CONSECUTIVE_FAILURE_THRESHOLD:
@@ -164,15 +158,14 @@ def _async_remove_stale_devices(
     for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id):
         for identifier in device.identifiers:
             if identifier[0] == DOMAIN and identifier not in current_identifiers:
-                _LOGGER.info(
-                    "Removing stale device: %s (%s)", device.name, identifier
-                )
+                _LOGGER.info("Removing stale device: %s (%s)", device.name, identifier)
                 device_reg.async_remove_device(device.id)
                 break
 
 
 async def _async_update_listener(
-    hass: HomeAssistant, entry: SunSynkConfigEntry,
+    hass: HomeAssistant,
+    entry: SunSynkConfigEntry,
 ) -> None:
     """Handle options update - reload the integration."""
     await hass.config_entries.async_reload(entry.entry_id)

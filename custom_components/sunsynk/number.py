@@ -203,16 +203,34 @@ async def async_setup_entry(
 
             # Cap 1-6 number entities
             for api_key, name, settings_key in CAP_DEFS:
-                entities.append(SunSynkCapNumber(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkCapNumber(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
             # Extra numeric settings
             for api_key, name, settings_key, min_val, max_val in EXTRA_NUMBER_DEFS:
-                entities.append(SunSynkExtraNumber(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, min_val, max_val, token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkExtraNumber(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        min_val,
+                        max_val,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
     async_add_entities(entities)
