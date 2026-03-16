@@ -472,7 +472,7 @@ class SunSynkComputedSensor(SunSynkBaseSensor):
         try:
             val = self._compute_fn(inv_data)
             return safe_float(val)
-        except (TypeError, AttributeError, ZeroDivisionError, IndexError):
+        except TypeError, AttributeError, ZeroDivisionError, IndexError:
             return None
 
 

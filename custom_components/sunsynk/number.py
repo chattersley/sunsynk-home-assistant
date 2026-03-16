@@ -92,7 +92,7 @@ class SunSynkCapNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             return None
         try:
             return float(val)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     async def async_set_native_value(self, value: float) -> None:
@@ -164,7 +164,7 @@ class SunSynkExtraNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             return None
         try:
             return float(val)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     async def async_set_native_value(self, value: float) -> None:

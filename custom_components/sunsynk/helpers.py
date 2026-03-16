@@ -40,7 +40,7 @@ def safe_float(val: Any) -> float | None:
         return None
     try:
         return float(val)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
