@@ -255,10 +255,6 @@ async def test_sensor_entities_created(
     hass: HomeAssistant, setup_integration
 ) -> None:
     """Test that sensor entities are created."""
-    # Check a few representative sensors exist
-    # Gateway sensor
-    state = hass.states.get(f"sensor.sunsynk_inverter_sn001_gateway_gw001_status")
-    # The entity IDs are based on unique_id; check states exist via entity registry
     entity_reg = er.async_get(hass)
     entities = [
         e for e in entity_reg.entities.values()

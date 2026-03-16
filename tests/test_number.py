@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
@@ -16,12 +16,6 @@ from custom_components.sunsynk.const import (
     CONF_PASSWORD,
     CONF_REGION,
     DOMAIN,
-)
-from custom_components.sunsynk.number import (
-    CAP_DEFS,
-    EXTRA_NUMBER_DEFS,
-    SunSynkCapNumber,
-    SunSynkExtraNumber,
 )
 
 VALID_CONFIG = {
