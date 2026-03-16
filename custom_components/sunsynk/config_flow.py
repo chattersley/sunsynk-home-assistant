@@ -8,8 +8,9 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlow
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.httpx_client import get_async_client
 
 from .auth import async_authenticate
 from .const import (
@@ -34,7 +35,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     region_idx = data[CONF_REGION]
     email = data[CONF_EMAIL]
@@ -45,6 +46,7 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
             email,
             password,
             region_idx,
+            async_client=get_async_client(hass),
         )
     except SunSynkAuthError as err:
         _LOGGER.error("Failed to authenticate with SunSynk: %s", err)
@@ -77,7 +79,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
         errors: dict[str, str] = {}
 
         try:
-            info = await validate_input(user_input)
+            info = await validate_input(self.hass, user_input)
         except CannotConnect:
             errors["base"] = "cannot_connect"
         except InvalidAuth:
@@ -99,7 +101,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
 
         if user_input is not None:
             try:
-                info = await validate_input(user_input)
+                info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -145,7 +147,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
             new_data = {**reauth_entry.data, **user_input}
 
             try:
-                await validate_input(new_data)
+                await validate_input(self.hass, new_data)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:

@@ -7,6 +7,7 @@ import time
 from datetime import UTC, date, datetime
 from typing import Any
 
+import httpx
 from sunsynk_api_client import SunSynk
 from sunsynk_api_client.models import WriteInverterSettingsRequestBody
 
@@ -58,12 +59,19 @@ _TOKEN_EXPIRY_BUFFER = 60
 class TokenManager:
     """Manages caching and refreshing of SunSynk auth tokens."""
 
-    def __init__(self, email: str, password: str, region_idx: int) -> None:
+    def __init__(
+        self,
+        email: str,
+        password: str,
+        region_idx: int,
+        async_client: httpx.AsyncClient | None = None,
+    ) -> None:
         """Initialise the token manager."""
         _LOGGER.debug("TokenManager init: email=%s region_idx=%d", email, region_idx)
         self._email = email
         self._password = password
         self._region_idx = region_idx
+        self._async_client = async_client
         self._auth_result: AuthResult | None = None
         self._token_obtained_at: float = 0
 
@@ -77,7 +85,9 @@ class TokenManager:
         )
         if self._auth_result is None or expired:
             _LOGGER.debug("Obtaining new SunSynk auth token")
-            self._auth_result = await async_authenticate(self._email, self._password, self._region_idx)
+            self._auth_result = await async_authenticate(
+                self._email, self._password, self._region_idx, self._async_client
+            )
             self._token_obtained_at = time.monotonic()
             _LOGGER.debug(
                 "Token obtained: token_type=%s expires_in=%d",
@@ -269,6 +279,7 @@ async def async_fetch_all_data(
     region_idx: int,
     error_tracker: ErrorTracker | None = None,
     plant_ignore_list: set[str] | None = None,
+    async_client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     """Fetch all data from SunSynk asynchronously."""
     _LOGGER.debug("async_fetch_all_data: region_idx=%d", region_idx)
@@ -285,6 +296,7 @@ async def async_fetch_all_data(
     async with SunSynk(
         bearer_auth=token,
         server_idx=region_idx,
+        async_client=async_client,
     ) as client:
         _LOGGER.debug("SunSynk client created, fetching plants")
         plants_res = await client.plants.get_plants_async()
@@ -328,6 +340,7 @@ async def async_write_settings(
     sn: str,
     settings: dict[str, str],
     error_tracker: ErrorTracker | None = None,
+    async_client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     """Write settings to an inverter asynchronously. Returns response dict with code/msg."""
     _LOGGER.debug("async_write_settings: sn=%s settings=%s", sn, settings)
@@ -344,6 +357,7 @@ async def async_write_settings(
     async with SunSynk(
         bearer_auth=token,
         server_idx=region_idx,
+        async_client=async_client,
     ) as client:
         try:
             resp = await client.settings.write_inverter_settings_async(

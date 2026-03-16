@@ -9,6 +9,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
@@ -123,6 +124,7 @@ class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore
             self._region_idx,
             self._sn,
             payload,
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 
@@ -187,6 +189,7 @@ class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore[misc
             self._region_idx,
             self._sn,
             payload,
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 

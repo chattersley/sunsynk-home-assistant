@@ -8,6 +8,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
@@ -93,6 +94,7 @@ class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[mi
             self._region_idx,
             self._sn,
             {self._api_key: option},
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 
@@ -150,6 +152,7 @@ class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):  # type: ignore
             self._region_idx,
             self._sn,
             {"sysWorkMode": option},
+            async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
 

@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -61,7 +62,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
     email: str = entry.data[CONF_EMAIL]
     password: str = entry.data[CONF_PASSWORD]
 
-    token_manager = TokenManager(email, password, region_idx)
+    httpx_client = get_async_client(hass)
+    token_manager = TokenManager(email, password, region_idx, httpx_client)
     error_tracker = ErrorTracker()
 
     ignore_raw = entry.options.get(CONF_PLANT_IGNORE_LIST, "")
@@ -78,6 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
                 region_idx,
                 error_tracker,
                 plant_ignore_list,
+                async_client=httpx_client,
             )
         except SunSynkAuthError as err:
             raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
