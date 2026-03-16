@@ -1,5 +1,5 @@
 {
-  "domain": "sunsynk_ha",
+  "domain": "sunsynk",
   "name": "SunSynk",
   "codeowners": ["@chattersley"],
   "config_flow": true,

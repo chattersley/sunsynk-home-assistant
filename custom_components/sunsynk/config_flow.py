@@ -57,7 +57,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {"title": f"SunSynk ({email})"}
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk_ha"):
+class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
     """Handle a config flow for SunSynk."""
 
     VERSION = 1

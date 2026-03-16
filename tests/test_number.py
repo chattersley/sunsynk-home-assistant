@@ -125,7 +125,7 @@ async def test_number_entities_created(
     entity_reg = er.async_get(hass)
     number_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "number"
+        if e.platform == "sunsynk" and e.domain == "number"
     ]
     # 6 caps + 3 extra (restart, shutdown, max charge current)
     assert len(number_entities) == 9
@@ -138,7 +138,7 @@ async def test_cap_number_set_value(
     entity_reg = er.async_get(hass)
     cap1_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "number" and "cap1" in e.unique_id
+        if e.platform == "sunsynk" and e.domain == "number" and "cap1" in e.unique_id
     ]
     assert len(cap1_entities) == 1
     entity_id = cap1_entities[0].entity_id
@@ -192,6 +192,6 @@ async def test_number_no_settings(hass: HomeAssistant) -> None:
     entity_reg = er.async_get(hass)
     number_entities = [
         e for e in entity_reg.entities.values()
-        if e.platform == "sunsynk_ha" and e.domain == "number"
+        if e.platform == "sunsynk" and e.domain == "number"
     ]
     assert len(number_entities) == 0

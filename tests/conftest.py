@@ -38,12 +38,7 @@ HassEventLoopPolicy.get_event_loop = _get_event_loop_safe  # type: ignore[assign
 
 @pytest.fixture(autouse=True)
 def register_sunsynk_integration(hass: HomeAssistant) -> None:
-    """Register the sunsynk_ha integration so the HA loader can find it.
-
-    The integration lives in custom_components/sunsynk/ but uses domain
-    'sunsynk_ha' in the manifest, so the default folder-based lookup fails.
-    This fixture inserts a real Integration object into the loader cache.
-    """
+    """Register the sunsynk integration so the HA loader can find it."""
     manifest = json.loads((INTEGRATION_DIR / "manifest.json").read_text())
     top_level_files = set(os.listdir(INTEGRATION_DIR))
 
@@ -56,4 +51,4 @@ def register_sunsynk_integration(hass: HomeAssistant) -> None:
     )
 
     cache: dict = hass.data.setdefault(DATA_INTEGRATIONS, {})
-    cache["sunsynk_ha"] = integration
+    cache["sunsynk"] = integration

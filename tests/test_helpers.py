@@ -120,6 +120,6 @@ class TestInverterDeviceInfo:
 
     def test_creates_device_info(self) -> None:
         info = inverter_device_info(1, "SN123")
-        assert ("sunsynk_ha", "inverter_SN123") in info.get("identifiers", set())
+        assert ("sunsynk", "inverter_SN123") in info.get("identifiers", set())
         assert info.get("serial_number") == "SN123"
-        assert info.get("via_device") == ("sunsynk_ha", "plant_1")
+        assert info.get("via_device") == ("sunsynk", "plant_1")
