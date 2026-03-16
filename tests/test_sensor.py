@@ -240,7 +240,7 @@ async def setup_integration(hass: HomeAssistant, mock_data):
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=mock_data,
         ),
     ):
@@ -294,7 +294,7 @@ async def test_sensor_no_data(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=empty_data,
         ),
     ):

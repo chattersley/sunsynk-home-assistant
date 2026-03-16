@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -10,9 +10,9 @@ from custom_components.sunsynk.const import SunSynkApiError, SunSynkAuthError
 from custom_components.sunsynk.data_fetcher import (
     ErrorTracker,
     TokenManager,
-    _fetch_successful,
-    fetch_all_data_sync,
-    write_settings_sync,
+    _async_fetch_successful,
+    async_fetch_all_data,
+    async_write_settings,
 )
 
 
@@ -59,75 +59,81 @@ class TestErrorTracker:
 class TestTokenManager:
     """Tests for TokenManager."""
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
-    def test_get_token_authenticates(self, mock_auth: MagicMock) -> None:
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
+    async def test_get_token_authenticates(self, mock_auth: AsyncMock) -> None:
         mock_auth.return_value = MagicMock(
             access_token="test_token",
             token_type="bearer",
             expires_in=3600,
         )
         tm = TokenManager("test@example.com", "password", 0)
-        token = tm.get_token()
+        token = await tm.async_get_token()
         assert token == "test_token"
         mock_auth.assert_called_once_with("test@example.com", "password", 0)
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
-    def test_get_token_caches(self, mock_auth: MagicMock) -> None:
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
+    async def test_get_token_caches(self, mock_auth: AsyncMock) -> None:
         mock_auth.return_value = MagicMock(
             access_token="test_token",
             token_type="bearer",
             expires_in=3600,
         )
         tm = TokenManager("test@example.com", "password", 0)
-        tm.get_token()
-        tm.get_token()
+        await tm.async_get_token()
+        await tm.async_get_token()
         assert mock_auth.call_count == 1
 
 
-class TestWriteSettingsSync:
-    """Tests for write_settings_sync."""
+class TestWriteSettings:
+    """Tests for async_write_settings."""
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
-    def test_write_settings_calls_api(
-        self, mock_client_cls: MagicMock, mock_auth: MagicMock,
+    async def test_write_settings_calls_api(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
         mock_auth.return_value = MagicMock(
             access_token="tok", token_type="bearer", expires_in=3600,
         )
         mock_client = MagicMock()
-        mock_client_cls.return_value.__enter__ = MagicMock(return_value=mock_client)
-        mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
-        mock_client.settings.write_inverter_settings.return_value = MagicMock(
-            code=0, msg="success",
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.settings.write_inverter_settings_async = AsyncMock(
+            return_value=MagicMock(code=0, msg="success"),
         )
 
         tm = TokenManager("test@example.com", "pass", 0)
-        result = write_settings_sync(tm, 0, "SN123", {"cap1": "50"})
+        result = await async_write_settings(tm, 0, "SN123", {"cap1": "50"})
 
-        mock_client.settings.write_inverter_settings.assert_called_once()
-        call_kwargs = mock_client.settings.write_inverter_settings.call_args.kwargs
+        mock_client.settings.write_inverter_settings_async.assert_called_once()
+        call_kwargs = mock_client.settings.write_inverter_settings_async.call_args.kwargs
         assert call_kwargs["sn"] == "SN123"
         assert result["code"] == 0
         assert result["msg"] == "success"
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
-    def test_write_settings_tracks_error(
-        self, mock_client_cls: MagicMock, mock_auth: MagicMock,
+    async def test_write_settings_tracks_error(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
         mock_auth.return_value = MagicMock(
             access_token="tok", token_type="bearer", expires_in=3600,
         )
         mock_client = MagicMock()
-        mock_client_cls.return_value.__enter__ = MagicMock(return_value=mock_client)
-        mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
-        mock_client.settings.write_inverter_settings.side_effect = RuntimeError("fail")
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.settings.write_inverter_settings_async = AsyncMock(
+            side_effect=RuntimeError("fail"),
+        )
 
         tm = TokenManager("test@example.com", "pass", 0)
         tracker = ErrorTracker()
         with pytest.raises(RuntimeError):
-            write_settings_sync(tm, 0, "SN123", {"cap1": "50"}, tracker)
+            await async_write_settings(tm, 0, "SN123", {"cap1": "50"}, tracker)
 
         assert tracker.as_dict()["Updates"]["count"] == 1
 
@@ -135,8 +141,9 @@ class TestWriteSettingsSync:
 class TestTokenManagerExpiry:
     """Tests for token expiry logic."""
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
-    def test_token_refreshes_when_expired(self, mock_auth: MagicMock) -> None:
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
+    async def test_token_refreshes_when_expired(self, mock_auth: AsyncMock) -> None:
         """Token should be re-fetched when it expires."""
         mock_auth.return_value = MagicMock(
             access_token="token1",
@@ -144,58 +151,79 @@ class TestTokenManagerExpiry:
             expires_in=1,  # 1 second, less than 60s buffer
         )
         tm = TokenManager("test@example.com", "password", 0)
-        tm.get_token()
+        await tm.async_get_token()
         # Token is already "expired" because expires_in(1) - buffer(60) < 0
-        tm.get_token()
+        await tm.async_get_token()
         assert mock_auth.call_count == 2
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
-    def test_token_auth_error_propagates(self, mock_auth: MagicMock) -> None:
-        """Auth errors should propagate from get_token."""
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
+    async def test_token_auth_error_propagates(self, mock_auth: AsyncMock) -> None:
+        """Auth errors should propagate from async_get_token."""
         mock_auth.side_effect = SunSynkAuthError("bad creds")
         tm = TokenManager("test@example.com", "password", 0)
         with pytest.raises(SunSynkAuthError):
-            tm.get_token()
+            await tm.async_get_token()
 
 
-class TestFetchSuccessful:
-    """Tests for the _fetch_successful helper."""
+class TestAsyncFetchSuccessful:
+    """Tests for the _async_fetch_successful helper."""
 
-    def test_returns_data_on_success(self) -> None:
+    @pytest.mark.asyncio
+    async def test_returns_data_on_success(self) -> None:
         mock_response = MagicMock(success=True, data="result_data")
-        result = _fetch_successful(lambda: mock_response)
+
+        async def coro():
+            return mock_response
+
+        result = await _async_fetch_successful(coro())
         assert result == "result_data"
 
-    def test_returns_none_on_failure(self) -> None:
+    @pytest.mark.asyncio
+    async def test_returns_none_on_failure(self) -> None:
         mock_response = MagicMock(success=False)
-        result = _fetch_successful(lambda: mock_response)
+
+        async def coro():
+            return mock_response
+
+        result = await _async_fetch_successful(coro())
         assert result is None
 
-    def test_returns_none_on_exception(self) -> None:
-        def raise_error():
+    @pytest.mark.asyncio
+    async def test_returns_none_on_exception(self) -> None:
+        async def coro():
             raise RuntimeError("network error")
-        result = _fetch_successful(raise_error)
+
+        result = await _async_fetch_successful(coro())
         assert result is None
 
-    def test_tracks_error_on_exception(self) -> None:
+    @pytest.mark.asyncio
+    async def test_tracks_error_on_exception(self) -> None:
         tracker = ErrorTracker()
-        def raise_error():
+
+        async def coro():
             raise RuntimeError("fail")
-        _fetch_successful(raise_error, tracker, "Flow")
+
+        await _async_fetch_successful(coro(), tracker, "Flow")
         assert tracker.as_dict()["Flow"]["count"] == 1
 
-    def test_returns_none_for_none_response(self) -> None:
-        result = _fetch_successful(lambda: None)
+    @pytest.mark.asyncio
+    async def test_returns_none_for_none_response(self) -> None:
+        async def coro():
+            return None
+
+        result = await _async_fetch_successful(coro())
         assert result is None
 
 
-class TestFetchAllDataSync:
-    """Tests for fetch_all_data_sync."""
+class TestAsyncFetchAllData:
+    """Tests for async_fetch_all_data."""
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
-    def test_auth_error_tracked_and_raised(
-        self, mock_client_cls: MagicMock, mock_auth: MagicMock,
+    async def test_auth_error_tracked_and_raised(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
         """Auth errors during fetch should be tracked and re-raised."""
         mock_auth.side_effect = SunSynkAuthError("token expired")
@@ -203,68 +231,70 @@ class TestFetchAllDataSync:
         tracker = ErrorTracker()
 
         with pytest.raises(SunSynkAuthError):
-            fetch_all_data_sync(tm, 0, tracker)
+            await async_fetch_all_data(tm, 0, tracker)
 
         assert tracker.as_dict()["Bearer"]["count"] == 1
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
-    def test_no_plants_raises_api_error(
-        self, mock_client_cls: MagicMock, mock_auth: MagicMock,
+    async def test_no_plants_raises_api_error(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
         """Should raise SunSynkApiError when no plants are returned."""
         mock_auth.return_value = MagicMock(
             access_token="tok", token_type="bearer", expires_in=3600,
         )
         mock_client = MagicMock()
-        mock_client_cls.return_value.__enter__ = MagicMock(return_value=mock_client)
-        mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
-        mock_client.plants.get_plants.return_value = MagicMock(
-            success=False, data=None,
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.plants.get_plants_async = AsyncMock(
+            return_value=MagicMock(success=False, data=None),
         )
 
         tm = TokenManager("test@example.com", "pass", 0)
         with pytest.raises(SunSynkApiError):
-            fetch_all_data_sync(tm, 0)
+            await async_fetch_all_data(tm, 0)
 
-    @patch("custom_components.sunsynk.data_fetcher.authenticate")
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
-    def test_plant_ignore_list(
-        self, mock_client_cls: MagicMock, mock_auth: MagicMock,
+    async def test_plant_ignore_list(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
         """Plants in the ignore list should be skipped."""
         mock_auth.return_value = MagicMock(
             access_token="tok", token_type="bearer", expires_in=3600,
         )
         mock_client = MagicMock()
-        mock_client_cls.return_value.__enter__ = MagicMock(return_value=mock_client)
-        mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
         plant1 = MagicMock(id=1, name="Plant 1")
         plant2 = MagicMock(id=2, name="Plant 2")
-        mock_client.plants.get_plants.return_value = MagicMock(
-            success=True, data=MagicMock(infos=[plant1, plant2]),
+        mock_client.plants.get_plants_async = AsyncMock(
+            return_value=MagicMock(success=True, data=MagicMock(infos=[plant1, plant2])),
         )
         # Mock system data
-        mock_client.gateways.get_gateways.return_value = MagicMock(
-            success=True, data=MagicMock(infos=[]),
+        mock_client.gateways.get_gateways_async = AsyncMock(
+            return_value=MagicMock(success=True, data=MagicMock(infos=[])),
         )
-        mock_client.events.get_events.return_value = MagicMock(
-            success=False, data=None,
+        mock_client.events.get_events_async = AsyncMock(
+            return_value=MagicMock(success=False, data=None),
         )
-        mock_client.notifications.get_messages.return_value = MagicMock(
-            success=True, data=MagicMock(infos=[]),
+        mock_client.notifications.get_messages_async = AsyncMock(
+            return_value=MagicMock(success=True, data=MagicMock(infos=[])),
         )
         # Mock plant data - return empty inverter list
-        mock_client.plants.get_plant_flow.return_value = MagicMock(
-            success=True, data=MagicMock(),
+        mock_client.plants.get_plant_flow_async = AsyncMock(
+            return_value=MagicMock(success=True, data=MagicMock()),
         )
-        mock_client.inverters.get_plant_inverters.return_value = MagicMock(
-            success=True, data=MagicMock(infos=[]),
+        mock_client.inverters.get_plant_inverters_async = AsyncMock(
+            return_value=MagicMock(success=True, data=MagicMock(infos=[])),
         )
 
         tm = TokenManager("test@example.com", "pass", 0)
-        result = fetch_all_data_sync(tm, 0, plant_ignore_list={"1"})
+        result = await async_fetch_all_data(tm, 0, plant_ignore_list={"1"})
 
         # Plant 1 should be ignored, only plant 2 present
         assert 1 not in result["plants"]

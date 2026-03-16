@@ -116,7 +116,7 @@ async def setup_integration(hass: HomeAssistant):
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -143,7 +143,7 @@ async def test_select_entities_created(
 async def test_sell_time_select_option(
     hass: HomeAssistant, setup_integration
 ) -> None:
-    """Test selecting a sell time option calls write_settings_sync."""
+    """Test selecting a sell time option calls async_write_settings."""
     entity_reg = er.async_get(hass)
     sell_time_entities = [
         e for e in entity_reg.entities.values()
@@ -154,10 +154,10 @@ async def test_sell_time_select_option(
 
     with (
         patch(
-            "custom_components.sunsynk.select.write_settings_sync",
+            "custom_components.sunsynk.select.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -188,10 +188,10 @@ async def test_sys_work_mode_select(
 
     with (
         patch(
-            "custom_components.sunsynk.select.write_settings_sync",
+            "custom_components.sunsynk.select.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -223,7 +223,7 @@ async def test_select_no_settings(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=data,
         ),
     ):

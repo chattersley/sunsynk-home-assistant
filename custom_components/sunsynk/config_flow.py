@@ -8,10 +8,10 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlow
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .auth import authenticate
+from .auth import async_authenticate
 from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
@@ -34,15 +34,14 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     region_idx = data[CONF_REGION]
     email = data[CONF_EMAIL]
     password = data[CONF_PASSWORD]
 
     try:
-        await hass.async_add_executor_job(
-            authenticate,
+        await async_authenticate(
             email,
             password,
             region_idx,
@@ -78,7 +77,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
         errors: dict[str, str] = {}
 
         try:
-            info = await validate_input(self.hass, user_input)
+            info = await validate_input(user_input)
         except CannotConnect:
             errors["base"] = "cannot_connect"
         except InvalidAuth:
@@ -100,7 +99,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
 
         if user_input is not None:
             try:
-                info = await validate_input(self.hass, user_input)
+                info = await validate_input(user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -146,7 +145,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain="sunsynk"):
             new_data = {**reauth_entry.data, **user_input}
 
             try:
-                await validate_input(self.hass, new_data)
+                await validate_input(new_data)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:

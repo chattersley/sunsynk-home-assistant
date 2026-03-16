@@ -107,7 +107,7 @@ async def setup_integration(hass: HomeAssistant):
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -134,7 +134,7 @@ async def test_number_entities_created(
 async def test_cap_number_set_value(
     hass: HomeAssistant, setup_integration
 ) -> None:
-    """Test setting a cap number value calls write_settings_sync."""
+    """Test setting a cap number value calls async_write_settings."""
     entity_reg = er.async_get(hass)
     cap1_entities = [
         e for e in entity_reg.entities.values()
@@ -145,10 +145,10 @@ async def test_cap_number_set_value(
 
     with (
         patch(
-            "custom_components.sunsynk.number.write_settings_sync",
+            "custom_components.sunsynk.number.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -181,7 +181,7 @@ async def test_number_no_settings(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=data,
         ),
     ):

@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
 from .const import DOMAIN, VALID_TIME_SLOTS
-from .data_fetcher import TokenManager, write_settings_sync
+from .data_fetcher import TokenManager, async_write_settings
 from .helpers import get_inverter_settings, inverter_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,8 +88,7 @@ class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[mi
             _LOGGER.warning("Invalid time slot: %s", option)
             return
         _LOGGER.debug("Setting %s=%s for inverter %s", self._api_key, option, self._sn)
-        await self.hass.async_add_executor_job(
-            write_settings_sync,
+        await async_write_settings(
             self._token_manager,
             self._region_idx,
             self._sn,
@@ -146,8 +145,7 @@ class SunSynkSysWorkModeSelect(CoordinatorEntity, SelectEntity):  # type: ignore
     async def async_select_option(self, option: str) -> None:
         """Write the selected work mode to the inverter."""
         _LOGGER.debug("Setting sysWorkMode=%s for inverter %s", option, self._sn)
-        await self.hass.async_add_executor_job(
-            write_settings_sync,
+        await async_write_settings(
             self._token_manager,
             self._region_idx,
             self._sn,

@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
 from .const import DOMAIN
-from .data_fetcher import TokenManager, write_settings_sync
+from .data_fetcher import TokenManager, async_write_settings
 from .helpers import get_inverter_settings, inverter_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,8 +98,7 @@ class SunSynkCapNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
         """Write the new cap value to the inverter."""
         int_val = str(int(value))
         _LOGGER.debug("Setting %s=%s for inverter %s", self._api_key, int_val, self._sn)
-        await self.hass.async_add_executor_job(
-            write_settings_sync,
+        await async_write_settings(
             self._token_manager,
             self._region_idx,
             self._sn,
@@ -170,8 +169,7 @@ class SunSynkExtraNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
         """Write the new value to the inverter."""
         str_val = str(int(value))
         _LOGGER.debug("Setting %s=%s for inverter %s", self._api_key, str_val, self._sn)
-        await self.hass.async_add_executor_job(
-            write_settings_sync,
+        await async_write_settings(
             self._token_manager,
             self._region_idx,
             self._sn,
