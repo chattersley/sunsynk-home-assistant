@@ -116,7 +116,7 @@ async def setup_integration(hass: HomeAssistant):
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -154,10 +154,10 @@ async def test_paired_timer_turn_on(
 
     with (
         patch(
-            "custom_components.sunsynk.switch.write_settings_sync",
+            "custom_components.sunsynk.switch.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -190,10 +190,10 @@ async def test_paired_timer_turn_off(
 
     with (
         patch(
-            "custom_components.sunsynk.switch.write_settings_sync",
+            "custom_components.sunsynk.switch.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -223,10 +223,10 @@ async def test_simple_switch_turn_on(
 
     with (
         patch(
-            "custom_components.sunsynk.switch.write_settings_sync",
+            "custom_components.sunsynk.switch.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -255,10 +255,10 @@ async def test_simple_switch_turn_off(
 
     with (
         patch(
-            "custom_components.sunsynk.switch.write_settings_sync",
+            "custom_components.sunsynk.switch.async_write_settings",
         ) as mock_write,
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=_make_coordinator_data(),
         ),
     ):
@@ -290,7 +290,7 @@ async def test_switch_no_settings(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=data,
         ),
     ):

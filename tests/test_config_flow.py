@@ -32,7 +32,7 @@ VALID_USER_INPUT = {
 def mock_authenticate():
     """Mock the authenticate function."""
     with patch(
-        "custom_components.sunsynk.config_flow.authenticate",
+        "custom_components.sunsynk.config_flow.async_authenticate",
     ) as mock_auth:
         yield mock_auth
 

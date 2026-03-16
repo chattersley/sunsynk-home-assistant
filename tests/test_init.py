@@ -106,9 +106,9 @@ def _make_coordinator_data():
 
 @pytest.fixture
 def mock_fetch():
-    """Mock fetch_all_data_sync to return test data."""
+    """Mock async_fetch_all_data to return test data."""
     with patch(
-        "custom_components.sunsynk.fetch_all_data_sync",
+        "custom_components.sunsynk.async_fetch_all_data",
         return_value=_make_coordinator_data(),
     ) as mock_fn:
         yield mock_fn
@@ -192,7 +192,7 @@ async def test_setup_entry_fetch_fails(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             side_effect=Exception("API down"),
         ),
     ):
@@ -215,7 +215,7 @@ async def test_setup_entry_auth_fails_triggers_reauth(hass: HomeAssistant) -> No
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             side_effect=SunSynkAuthError("token expired"),
         ),
     ):
@@ -278,7 +278,7 @@ async def test_repair_issue_created_after_consecutive_failures(
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             side_effect=_fetch_side_effect,
         ),
     ):
@@ -327,7 +327,7 @@ async def test_repair_issue_cleared_on_recovery(
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             side_effect=_fetch_side_effect,
         ),
     ):
@@ -423,7 +423,7 @@ async def test_stale_devices_removed(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             side_effect=_fetch_side_effect,
         ),
     ):

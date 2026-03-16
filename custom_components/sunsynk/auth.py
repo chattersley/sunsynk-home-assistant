@@ -42,20 +42,20 @@ def _encrypt_password(password: str, public_key_base64: str) -> str:
     return base64.b64encode(encrypted).decode("utf-8")
 
 
-def authenticate(
+async def async_authenticate(
     username: str,
     password: str,
     region_idx: int,
 ) -> AuthResult:
-    """Authenticate and get bearer token (Synchronous for executor)."""
-    with SunSynk(server_idx=region_idx) as sdk:
+    """Authenticate and get bearer token."""
+    async with SunSynk(server_idx=region_idx) as sdk:
         # Step 1: Get public key
         nonce = int(time.time() * 1000)
         sign_string = f"nonce={nonce}&source=sunsynk"
         sign_hash = hashlib.md5(sign_string.encode("utf-8")).hexdigest()
 
         _LOGGER.debug("Fetching public key from SunSynk")
-        public_key_response = sdk.authentication.get_public_key(
+        public_key_response = await sdk.authentication.get_public_key_async(
             nonce=nonce,
             source="sunsynk",
             sign=sign_hash,
@@ -75,7 +75,7 @@ def authenticate(
         token_sign = hashlib.md5(token_sign_string.encode("utf-8")).hexdigest()
 
         _LOGGER.debug("Authenticating with encrypted password")
-        token_response = sdk.authentication.get_bearer_token(
+        token_response = await sdk.authentication.get_bearer_token_async(
             username=username,
             password=encrypted_password,
             nonce=token_nonce,

@@ -25,7 +25,7 @@ from .const import (
     DOMAIN,
     SunSynkAuthError,
 )
-from .data_fetcher import ErrorTracker, TokenManager, fetch_all_data_sync
+from .data_fetcher import ErrorTracker, TokenManager, async_fetch_all_data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,11 +70,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: SunSynkConfigEntry) -> b
     consecutive_failures = 0
 
     async def async_update_data() -> dict[str, Any]:
-        """Fetch data from SunSynk via executor."""
+        """Fetch data from SunSynk."""
         nonlocal consecutive_failures
         try:
-            data = await hass.async_add_executor_job(
-                fetch_all_data_sync,
+            data = await async_fetch_all_data(
                 token_manager,
                 region_idx,
                 error_tracker,

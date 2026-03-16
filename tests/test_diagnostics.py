@@ -60,7 +60,7 @@ def _make_mock_data():
 def mock_fetch():
     """Mock fetch to return test data."""
     with patch(
-        "custom_components.sunsynk.fetch_all_data_sync",
+        "custom_components.sunsynk.async_fetch_all_data",
         return_value=_make_mock_data(),
     ) as mock_fn:
         yield mock_fn
@@ -129,7 +129,7 @@ async def test_diagnostics_empty_data(hass: HomeAssistant) -> None:
     with (
         patch("custom_components.sunsynk.TokenManager"),
         patch(
-            "custom_components.sunsynk.fetch_all_data_sync",
+            "custom_components.sunsynk.async_fetch_all_data",
             return_value=empty_data,
         ),
     ):
