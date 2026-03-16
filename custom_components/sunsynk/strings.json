@@ -9,6 +9,23 @@
           "email": "Email Address",
           "password": "Password"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate SunSynk",
+        "description": "Your SunSynk credentials are no longer valid. Please enter updated credentials.",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure SunSynk",
+        "description": "Update your SunSynk connection settings.",
+        "data": {
+          "region": "SunSynk Region",
+          "email": "Email Address",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -17,7 +34,9 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This SunSynk account is already configured."
+      "already_configured": "This SunSynk account is already configured.",
+      "reauth_successful": "Re-authentication successful.",
+      "reconfigure_successful": "Reconfiguration successful."
     }
   },
   "options": {
@@ -29,6 +48,29 @@
         },
         "description": "Configure SunSynk integration options"
       }
+    }
+  },
+  "exceptions": {
+    "sunsynk_error": {
+      "message": "An error occurred with the SunSynk integration: {error}"
+    },
+    "auth_error": {
+      "message": "Authentication with SunSynk failed: {error}"
+    },
+    "api_error": {
+      "message": "Error communicating with the SunSynk API: {error}"
+    },
+    "cannot_connect": {
+      "message": "Failed to connect to the SunSynk API."
+    },
+    "invalid_auth": {
+      "message": "Invalid SunSynk email or password."
+    }
+  },
+  "issues": {
+    "persistent_api_failure": {
+      "title": "SunSynk API communication failure",
+      "description": "The SunSynk integration has failed to communicate with the API {count} times in a row.\n\nLast error: {error}\n\nThis may indicate a temporary API outage or a network issue. The integration will continue retrying automatically and this issue will be resolved when communication is restored."
     }
   },
   "entity": {
