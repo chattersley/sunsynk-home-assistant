@@ -33,6 +33,7 @@ class SunSynkApiError(SunSynkError):
 
     translation_key = "api_error"
 
+
 CONF_REGION = "region"
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
@@ -46,6 +47,4 @@ REGIONS = {
 }
 
 # Valid 30-minute time slot values for sell times
-VALID_TIME_SLOTS = [
-    f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)
-]
+VALID_TIME_SLOTS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]

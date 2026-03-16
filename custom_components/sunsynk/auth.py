@@ -29,19 +29,13 @@ class AuthResult:
 def _to_pem_public_key(base64_key: str) -> str:
     """Convert Base64 encoded public key to PEM format."""
     chunks = [base64_key[i : i + 64] for i in range(0, len(base64_key), 64)]
-    return (
-        "-----BEGIN PUBLIC KEY-----\n"
-        + "\n".join(chunks)
-        + "\n-----END PUBLIC KEY-----\n"
-    )
+    return "-----BEGIN PUBLIC KEY-----\n" + "\n".join(chunks) + "\n-----END PUBLIC KEY-----\n"
 
 
 def _encrypt_password(password: str, public_key_base64: str) -> str:
     """Encrypt password using RSA with PKCS1 padding."""
     public_key_pem = _to_pem_public_key(public_key_base64)
-    loaded_key = serialization.load_pem_public_key(
-        public_key_pem.encode(), backend=default_backend()
-    )
+    loaded_key = serialization.load_pem_public_key(public_key_pem.encode(), backend=default_backend())
     if not isinstance(loaded_key, RSAPublicKey):
         raise TypeError("Expected RSA public key")
     encrypted = loaded_key.encrypt(password.encode("utf-8"), padding.PKCS1v15())
@@ -77,12 +71,8 @@ def authenticate(
         # Step 3: Get bearer token
         token_nonce = int(time.time() * 1000)
         public_key_snippet = public_key_base64[:10]
-        token_sign_string = (
-            f"nonce={token_nonce}&source=sunsynk{public_key_snippet}"
-        )
-        token_sign = hashlib.md5(
-            token_sign_string.encode("utf-8")
-        ).hexdigest()
+        token_sign_string = f"nonce={token_nonce}&source=sunsynk{public_key_snippet}"
+        token_sign = hashlib.md5(token_sign_string.encode("utf-8")).hexdigest()
 
         _LOGGER.debug("Authenticating with encrypted password")
         token_response = sdk.authentication.get_bearer_token(

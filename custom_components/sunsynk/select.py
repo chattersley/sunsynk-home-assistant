@@ -179,14 +179,28 @@ async def async_setup_entry(
 
             # Sell time 1-6 select entities
             for api_key, name, settings_key in SELL_TIME_DEFS:
-                entities.append(SunSynkSellTimeSelect(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkSellTimeSelect(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
             # System work mode
-            entities.append(SunSynkSysWorkModeSelect(
-                coordinator, plant_id, sn, token_manager, region_idx,
-            ))
+            entities.append(
+                SunSynkSysWorkModeSelect(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    token_manager,
+                    region_idx,
+                )
+            )
 
     async_add_entities(entities)

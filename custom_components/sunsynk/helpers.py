@@ -45,7 +45,9 @@ def safe_float(val: Any) -> float | None:
 
 
 def get_inv_data(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
 ) -> dict[str, Any] | None:
     """Get inverter data dict from coordinator."""
     if not coordinator.data:
@@ -57,7 +59,10 @@ def get_inv_data(
 
 
 def get_source_obj(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str, source_type: str,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
+    source_type: str,
 ) -> Any | None:
     """Get a source object (battery, grid, etc.) from inverter data."""
     inv_data = get_inv_data(coordinator, plant_id, sn)
@@ -67,7 +72,9 @@ def get_source_obj(
 
 
 def get_inverter_settings(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
 ) -> Any | None:
     """Get the inverter settings object from coordinator data."""
     inv_data = get_inv_data(coordinator, plant_id, sn)

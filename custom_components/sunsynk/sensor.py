@@ -45,6 +45,7 @@ PARALLEL_UPDATES = 0
 # Base sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkBaseSensor(CoordinatorEntity, SensorEntity):  # type: ignore[misc]
     """Base class for SunSynk sensors."""
 
@@ -81,7 +82,8 @@ class SunSynkBaseSensor(CoordinatorEntity, SensorEntity):  # type: ignore[misc]
         self._attr_available = self.coordinator.last_update_success
         if was_available and not self._attr_available:
             _LOGGER.warning(
-                "Entity %s is now unavailable", self._attr_unique_id,
+                "Entity %s is now unavailable",
+                self._attr_unique_id,
             )
         self._attr_native_value = self._compute_native_value()
         self._attr_extra_state_attributes = self._compute_extra_state_attributes() or {}
@@ -92,12 +94,15 @@ class SunSynkBaseSensor(CoordinatorEntity, SensorEntity):  # type: ignore[misc]
 # Gateway sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkGatewaySensor(SunSynkBaseSensor):
     """Sensor for SunSynk gateway status."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: SunSynkCoordinator, gateway: Any, key: str, translation_key: str, **kwargs: Any) -> None:
+    def __init__(
+        self, coordinator: SunSynkCoordinator, gateway: Any, key: str, translation_key: str, **kwargs: Any
+    ) -> None:
         """Initialise the gateway sensor."""
         super().__init__(coordinator, f"gateway_{gateway.sn}_{key}", translation_key, **kwargs)
         self._gateway_sn = gateway.sn
@@ -125,6 +130,7 @@ class SunSynkGatewaySensor(SunSynkBaseSensor):
 # Event sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkEventSensor(SunSynkBaseSensor):
     """Sensor for SunSynk event counts with detail attributes."""
 
@@ -133,7 +139,9 @@ class SunSynkEventSensor(SunSynkBaseSensor):
     def __init__(self, coordinator: SunSynkCoordinator, type_id: int, translation_key: str) -> None:
         """Initialise the event sensor."""
         super().__init__(
-            coordinator, f"events_{type_id}", translation_key,
+            coordinator,
+            f"events_{type_id}",
+            translation_key,
             state_class=SensorStateClass.TOTAL,
         )
         self._type_id = type_id
@@ -169,6 +177,7 @@ class SunSynkEventSensor(SunSynkBaseSensor):
 # Plant flow sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkPlantFlowSensor(SunSynkBaseSensor):
     """Sensor for SunSynk plant energy flow."""
 
@@ -183,15 +192,15 @@ class SunSynkPlantFlowSensor(SunSynkBaseSensor):
     ) -> None:
         """Initialise the plant flow sensor."""
         super().__init__(
-            coordinator, f"plant_{plant_id}_flow_{key}", translation_key, unit,
+            coordinator,
+            f"plant_{plant_id}_flow_{key}",
+            translation_key,
+            unit,
             device_class,
         )
         self._plant_id = plant_id
         self._key = key
-        plant_info = (
-            coordinator.data.get("plants", {}).get(plant_id, {}).get("info")
-            if coordinator.data else None
-        )
+        plant_info = coordinator.data.get("plants", {}).get(plant_id, {}).get("info") if coordinator.data else None
         plant_name = getattr(plant_info, "name", None) or f"Plant {plant_id}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"plant_{plant_id}")},
@@ -214,6 +223,7 @@ class SunSynkPlantFlowSensor(SunSynkBaseSensor):
 # Inverter sensor (simple key-from-source)
 # ---------------------------------------------------------------------------
 
+
 class SunSynkInverterSensor(SunSynkBaseSensor):
     """Sensor for SunSynk inverter data."""
 
@@ -231,8 +241,12 @@ class SunSynkInverterSensor(SunSynkBaseSensor):
     ) -> None:
         """Initialise the inverter sensor."""
         super().__init__(
-            coordinator, f"inverter_{sn}_{source_type}_{key}", translation_key, unit,
-            device_class, state_class,
+            coordinator,
+            f"inverter_{sn}_{source_type}_{key}",
+            translation_key,
+            unit,
+            device_class,
+            state_class,
         )
         self._plant_id = plant_id
         self._sn = sn
@@ -243,7 +257,10 @@ class SunSynkInverterSensor(SunSynkBaseSensor):
     def _compute_native_value(self) -> Any | None:
         """Return the current value."""
         source_obj = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, self._source_type,
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            self._source_type,
         )
         if not source_obj:
             return None
@@ -260,6 +277,7 @@ class SunSynkInverterSettingsSensor(SunSynkInverterSensor):
 # ---------------------------------------------------------------------------
 # Inverter temperature sensor
 # ---------------------------------------------------------------------------
+
 
 class SunSynkInverterTempSensor(SunSynkBaseSensor):
     """Sensor for SunSynk inverter temperatures."""
@@ -278,7 +296,10 @@ class SunSynkInverterTempSensor(SunSynkBaseSensor):
     ) -> None:
         """Initialise the inverter temperature sensor."""
         super().__init__(
-            coordinator, f"inverter_{sn}_temp_{key}", translation_key, unit,
+            coordinator,
+            f"inverter_{sn}_temp_{key}",
+            translation_key,
+            unit,
             device_class,
         )
         self._plant_id = plant_id
@@ -298,7 +319,10 @@ class SunSynkInverterTempSensor(SunSynkBaseSensor):
     def _get_latest_temp_record(self) -> Any | None:
         """Return the most recent temperature record for this inverter."""
         day_res = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, "temp",
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            "temp",
         )
         if not day_res or not day_res.infos:
             return None
@@ -308,6 +332,7 @@ class SunSynkInverterTempSensor(SunSynkBaseSensor):
 # ---------------------------------------------------------------------------
 # VIP (voltage/current/power from vip[] lists) sensor
 # ---------------------------------------------------------------------------
+
 
 class SunSynkVipSensor(SunSynkBaseSensor):
     """Sensor reading voltage/current/power from a source's vip list."""
@@ -328,7 +353,9 @@ class SunSynkVipSensor(SunSynkBaseSensor):
         super().__init__(
             coordinator,
             f"inverter_{sn}_{source_type}_vip{vip_index}_{vip_field}",
-            translation_key, unit, device_class,
+            translation_key,
+            unit,
+            device_class,
         )
         self._plant_id = plant_id
         self._sn = sn
@@ -340,7 +367,10 @@ class SunSynkVipSensor(SunSynkBaseSensor):
     def _compute_native_value(self) -> float | None:
         """Return the current value."""
         source_obj = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, self._source_type,
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            self._source_type,
         )
         if not source_obj:
             return None
@@ -353,6 +383,7 @@ class SunSynkVipSensor(SunSynkBaseSensor):
 # ---------------------------------------------------------------------------
 # PV string sensor (from input.pv_iv list)
 # ---------------------------------------------------------------------------
+
 
 class SunSynkPvStringSensor(SunSynkBaseSensor):
     """Sensor for individual PV string data from input.pv_iv[]."""
@@ -372,7 +403,9 @@ class SunSynkPvStringSensor(SunSynkBaseSensor):
         super().__init__(
             coordinator,
             f"inverter_{sn}_pv{string_index + 1}_{field}",
-            translation_key, unit, device_class,
+            translation_key,
+            unit,
+            device_class,
         )
         self._attr_translation_placeholders = {"string_num": str(string_index + 1)}
         self._plant_id = plant_id
@@ -384,7 +417,10 @@ class SunSynkPvStringSensor(SunSynkBaseSensor):
     def _compute_native_value(self) -> float | None:
         """Return the current value."""
         source_obj = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, "input",
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            "input",
         )
         if not source_obj:
             return None
@@ -397,6 +433,7 @@ class SunSynkPvStringSensor(SunSynkBaseSensor):
 # ---------------------------------------------------------------------------
 # Computed sensor (value derived from multiple fields)
 # ---------------------------------------------------------------------------
+
 
 class SunSynkComputedSensor(SunSynkBaseSensor):
     """Sensor whose value is computed from multiple coordinator data fields."""
@@ -415,8 +452,12 @@ class SunSynkComputedSensor(SunSynkBaseSensor):
     ) -> None:
         """Initialise the computed sensor."""
         super().__init__(
-            coordinator, f"inverter_{sn}_computed_{unique_key}", translation_key, unit,
-            device_class, state_class,
+            coordinator,
+            f"inverter_{sn}_computed_{unique_key}",
+            translation_key,
+            unit,
+            device_class,
+            state_class,
         )
         self._plant_id = plant_id
         self._sn = sn
@@ -439,6 +480,7 @@ class SunSynkComputedSensor(SunSynkBaseSensor):
 # Notification sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkNotificationSensor(SunSynkBaseSensor):
     """Sensor for SunSynk notifications with detail attributes."""
 
@@ -447,7 +489,9 @@ class SunSynkNotificationSensor(SunSynkBaseSensor):
     def __init__(self, coordinator: SunSynkCoordinator) -> None:
         """Initialise the notification sensor."""
         super().__init__(
-            coordinator, "notifications", "notifications",
+            coordinator,
+            "notifications",
+            "notifications",
             state_class=SensorStateClass.TOTAL,
         )
 
@@ -484,6 +528,7 @@ class SunSynkNotificationSensor(SunSynkBaseSensor):
 # Error tracking sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkErrorSensor(SunSynkBaseSensor):
     """Sensor exposing API error counts per category."""
 
@@ -519,6 +564,7 @@ class SunSynkErrorSensor(SunSynkBaseSensor):
 # Last update timestamp sensor
 # ---------------------------------------------------------------------------
 
+
 class SunSynkLastUpdateSensor(SunSynkBaseSensor):
     """Sensor showing when data was last successfully fetched."""
 
@@ -527,7 +573,9 @@ class SunSynkLastUpdateSensor(SunSynkBaseSensor):
     def __init__(self, coordinator: SunSynkCoordinator) -> None:
         """Initialise the last update sensor."""
         super().__init__(
-            coordinator, "stats_last_update", "stats_last_update",
+            coordinator,
+            "stats_last_update",
+            "stats_last_update",
             device_class=SensorDeviceClass.TIMESTAMP,
             state_class=None,
         )
@@ -542,6 +590,7 @@ class SunSynkLastUpdateSensor(SunSynkBaseSensor):
 # ---------------------------------------------------------------------------
 # Consolidated plant sensor (aggregates across all inverters)
 # ---------------------------------------------------------------------------
+
 
 class SunSynkConsolidatedSensor(SunSynkBaseSensor):
     """Sensor that sums a field across all inverters in a plant."""
@@ -561,15 +610,15 @@ class SunSynkConsolidatedSensor(SunSynkBaseSensor):
         super().__init__(
             coordinator,
             f"plant_{plant_id}_consolidated_{source_type}_{key}",
-            translation_key, unit, device_class, state_class,
+            translation_key,
+            unit,
+            device_class,
+            state_class,
         )
         self._plant_id = plant_id
         self._source_type = source_type
         self._key = key
-        plant_info = (
-            coordinator.data.get("plants", {}).get(plant_id, {}).get("info")
-            if coordinator.data else None
-        )
+        plant_info = coordinator.data.get("plants", {}).get(plant_id, {}).get("info") if coordinator.data else None
         plant_name = getattr(plant_info, "name", None) or f"Plant {plant_id}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"plant_{plant_id}")},
@@ -602,17 +651,20 @@ class SunSynkConsolidatedSensor(SunSynkBaseSensor):
 # Helper: compute internal power usage for usable inverter sensor
 # ---------------------------------------------------------------------------
 
+
 def _compute_internal_power_usage(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
 ) -> float | None:
     """Return internal power usage: pv + grid + battery - load."""
     inv_data = get_inv_data(coordinator, plant_id, sn)
     if not inv_data:
         return None
-    pv   = safe_float(getattr(inv_data.get("input"),   "pac",         None))
-    grid = safe_float(getattr(inv_data.get("grid"),    "pac",         None))
-    batt = safe_float(getattr(inv_data.get("battery"), "power",       None))
-    load = safe_float(getattr(inv_data.get("load"),    "total_power", None))
+    pv = safe_float(getattr(inv_data.get("input"), "pac", None))
+    grid = safe_float(getattr(inv_data.get("grid"), "pac", None))
+    batt = safe_float(getattr(inv_data.get("battery"), "power", None))
+    load = safe_float(getattr(inv_data.get("load"), "total_power", None))
     if pv is None or grid is None or batt is None or load is None:
         return None
     return round(pv + grid + batt - load, 3)
@@ -646,9 +698,14 @@ def _apply_source_aliases(
     elif source_type == "load":
         attrs["power"] = attrs.get("total_power", 0)
     elif source_type == "output":
-        attrs["internalpowerusage"] = _compute_internal_power_usage(
-            coordinator, plant_id, sn,
-        ) or 0
+        attrs["internalpowerusage"] = (
+            _compute_internal_power_usage(
+                coordinator,
+                plant_id,
+                sn,
+            )
+            or 0
+        )
     elif source_type == "input":
         attrs["power"] = attrs.get("pac", 0)
         pv_iv: list[Any] = attrs.get("pv_iv") or []
@@ -659,6 +716,7 @@ def _apply_source_aliases(
 # ---------------------------------------------------------------------------
 # Raw data sensor (replicates old "usable" container sensor contract)
 # ---------------------------------------------------------------------------
+
 
 class SunSynkRawDataSensor(SunSynkBaseSensor):
     """Exposes all fields of an API response object as state attributes.
@@ -696,7 +754,10 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
     def _compute_native_value(self) -> str | None:
         """Return 'ok' when data is available, else None."""
         source = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, self._source_type,
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            self._source_type,
         )
         return "ok" if source else None
 
@@ -708,14 +769,15 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
             return self._compute_temp_attributes(dict(defaults))
 
         source = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, self._source_type,
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            self._source_type,
         )
         if not source:
             return dict(defaults)
 
-        dumped: dict[str, Any] = (
-            source.model_dump() if hasattr(source, "model_dump") else dict(source.__dict__)
-        )
+        dumped: dict[str, Any] = source.model_dump() if hasattr(source, "model_dump") else dict(source.__dict__)
         # Merge: defaults first, then dumped on top — ensures keys stripped
         # by model_serializer (None optionals) still have fallback values.
         attrs = {**defaults, **dumped}
@@ -725,7 +787,10 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
     def _compute_temp_attributes(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Compute composite temperature attributes from temp + battery sources."""
         temp_source = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, "temp",
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            "temp",
         )
         if temp_source and hasattr(temp_source, "infos") and temp_source.infos:
             latest = temp_source.infos[-1]
@@ -736,7 +801,10 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
             if ac_val is not None:
                 attrs["ac"] = ac_val
         batt_source = get_source_obj(
-            self.coordinator, self._plant_id, self._sn, "battery",
+            self.coordinator,
+            self._plant_id,
+            self._sn,
+            "battery",
         )
         if batt_source:
             batt_temp = safe_float(getattr(batt_source, "temp", None))
@@ -749,19 +817,23 @@ class SunSynkRawDataSensor(SunSynkBaseSensor):
 # Factory: gateway sensors
 # ---------------------------------------------------------------------------
 
+
 def _create_gateway_sensors(
-    coordinator: SunSynkCoordinator, gateways: list[Any],
+    coordinator: SunSynkCoordinator,
+    gateways: list[Any],
 ) -> list[SensorEntity]:
     """Create sensor entities for gateways."""
     entities: list[SensorEntity] = []
     for gw in gateways:
-        entities.append(
-            SunSynkGatewaySensor(coordinator, gw, "status", "gateway_status")
-        )
+        entities.append(SunSynkGatewaySensor(coordinator, gw, "status", "gateway_status"))
         entities.append(
             SunSynkGatewaySensor(
-                coordinator, gw, "signal", "gateway_signal",
-                state_class=SensorStateClass.MEASUREMENT, unit=None,
+                coordinator,
+                gw,
+                "signal",
+                "gateway_signal",
+                state_class=SensorStateClass.MEASUREMENT,
+                unit=None,
             )
         )
     return entities
@@ -771,8 +843,10 @@ def _create_gateway_sensors(
 # Factory: plant flow sensors
 # ---------------------------------------------------------------------------
 
+
 def _create_plant_flow_sensors(
-    coordinator: SunSynkCoordinator, plant_id: int,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
 ) -> list[SensorEntity]:
     """Create sensor entities for plant energy flow."""
     flow_defs: list[tuple[str, str, str, SensorDeviceClass]] = [
@@ -787,24 +861,31 @@ def _create_plant_flow_sensors(
         ("home_load_power", "plant_home_load_power", UnitOfPower.WATT, SensorDeviceClass.POWER),
         ("ups_load_power", "plant_ups_load_power", UnitOfPower.WATT, SensorDeviceClass.POWER),
     ]
-    return [
-        SunSynkPlantFlowSensor(coordinator, plant_id, key, tkey, unit, dc)
-        for key, tkey, unit, dc in flow_defs
-    ]
+    return [SunSynkPlantFlowSensor(coordinator, plant_id, key, tkey, unit, dc) for key, tkey, unit, dc in flow_defs]
 
 
 # ---------------------------------------------------------------------------
 # Factory: inverter sensors
 # ---------------------------------------------------------------------------
 
+
 def _create_inverter_sensors(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str, inv_data: dict[str, Any],
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
+    inv_data: dict[str, Any],
 ) -> list[SensorEntity]:
     """Create sensor entities for a single inverter."""
     entities: list[SensorEntity] = [
         SunSynkInverterSensor(
-            coordinator, plant_id, sn, "pac", "inverter_power_output",
-            "info", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER,
+            coordinator,
+            plant_id,
+            sn,
+            "pac",
+            "inverter_power_output",
+            "info",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
         ),
     ]
 
@@ -812,24 +893,94 @@ def _create_inverter_sensors(
     if inv_data.get("battery"):
         batt_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
             ("soc", "battery_soc", PERCENTAGE, SensorDeviceClass.BATTERY, SensorStateClass.MEASUREMENT),
-            ("voltage", "battery_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT),
-            ("charge_volt", "battery_charge_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT),
+            (
+                "voltage",
+                "battery_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+                SensorStateClass.MEASUREMENT,
+            ),
+            (
+                "charge_volt",
+                "battery_charge_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+                SensorStateClass.MEASUREMENT,
+            ),
             ("status", "battery_status", None, None, None),
-            ("charge_current_limit", "battery_charge_current_limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
-            ("discharge_current_limit", "battery_discharge_current_limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
+            (
+                "charge_current_limit",
+                "battery_charge_current_limit",
+                UnitOfElectricCurrent.AMPERE,
+                SensorDeviceClass.CURRENT,
+                SensorStateClass.MEASUREMENT,
+            ),
+            (
+                "discharge_current_limit",
+                "battery_discharge_current_limit",
+                UnitOfElectricCurrent.AMPERE,
+                SensorDeviceClass.CURRENT,
+                SensorStateClass.MEASUREMENT,
+            ),
             ("correct_cap", "battery_capacity", UnitOfEnergy.KILO_WATT_HOUR, None, None),
-            ("current", "battery_current", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
+            (
+                "current",
+                "battery_current",
+                UnitOfElectricCurrent.AMPERE,
+                SensorDeviceClass.CURRENT,
+                SensorStateClass.MEASUREMENT,
+            ),
             ("power", "battery_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-            ("etotal_chg", "battery_total_charge", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etotal_dischg", "battery_total_discharge", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etoday_chg", "battery_today_charge", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etoday_dischg", "battery_today_discharge", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("temp", "battery_temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT),
+            (
+                "etotal_chg",
+                "battery_total_charge",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etotal_dischg",
+                "battery_total_discharge",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etoday_chg",
+                "battery_today_charge",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etoday_dischg",
+                "battery_today_discharge",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "temp",
+                "battery_temperature",
+                UnitOfTemperature.CELSIUS,
+                SensorDeviceClass.TEMPERATURE,
+                SensorStateClass.MEASUREMENT,
+            ),
         ]
         for key, tkey, unit, dc, sc in batt_defs:
-            entities.append(SunSynkInverterSensor(
-                coordinator, plant_id, sn, key, tkey, "battery", unit, dc, sc,
-            ))
+            entities.append(
+                SunSynkInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "battery",
+                    unit,
+                    dc,
+                    sc,
+                )
+            )
 
     # --- Grid sensors ---
     if inv_data.get("grid"):
@@ -838,111 +989,315 @@ def _create_inverter_sensors(
             ("fac", "grid_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
             ("status", "grid_status", None, None, None),
             ("pf", "grid_power_factor", None, SensorDeviceClass.POWER_FACTOR, SensorStateClass.MEASUREMENT),
-            ("etotal_from", "grid_total_import", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etotal_to", "grid_total_export", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etoday_from", "grid_today_import", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("etoday_to", "grid_today_export", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("limiter_total_power", "grid_limiter_total_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            (
+                "etotal_from",
+                "grid_total_import",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etotal_to",
+                "grid_total_export",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etoday_from",
+                "grid_today_import",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "etoday_to",
+                "grid_today_export",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "limiter_total_power",
+                "grid_limiter_total_power",
+                UnitOfPower.KILO_WATT,
+                SensorDeviceClass.POWER,
+                SensorStateClass.MEASUREMENT,
+            ),
         ]
         for key, tkey, unit, dc, sc in grid_defs:
-            entities.append(SunSynkInverterSensor(
-                coordinator, plant_id, sn, key, tkey, "grid", unit, dc, sc,
-            ))
+            entities.append(
+                SunSynkInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "grid",
+                    unit,
+                    dc,
+                    sc,
+                )
+            )
         # Grid voltage from vip[0]
-        entities.append(SunSynkVipSensor(
-            coordinator, plant_id, sn, "grid", 0, "volt",
-            "grid_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE,
-        ))
+        entities.append(
+            SunSynkVipSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "grid",
+                0,
+                "volt",
+                "grid_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+            )
+        )
 
     # --- Load sensors ---
     if inv_data.get("load"):
         load_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
             ("total_power", "load_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-            ("total_used", "load_total_used", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("daily_used", "load_daily_used", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("load_fac", "load_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
+            (
+                "total_used",
+                "load_total_used",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "daily_used",
+                "load_daily_used",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "load_fac",
+                "load_frequency",
+                UnitOfFrequency.HERTZ,
+                SensorDeviceClass.FREQUENCY,
+                SensorStateClass.MEASUREMENT,
+            ),
             ("smart_load_status", "smart_load_status", None, None, None),
-            ("ups_power_total", "load_ups_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            (
+                "ups_power_total",
+                "load_ups_power",
+                UnitOfPower.KILO_WATT,
+                SensorDeviceClass.POWER,
+                SensorStateClass.MEASUREMENT,
+            ),
         ]
         for key, tkey, unit, dc, sc in load_defs:
-            entities.append(SunSynkInverterSensor(
-                coordinator, plant_id, sn, key, tkey, "load", unit, dc, sc,
-            ))
+            entities.append(
+                SunSynkInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "load",
+                    unit,
+                    dc,
+                    sc,
+                )
+            )
         # Load voltage from vip[0]
-        entities.append(SunSynkVipSensor(
-            coordinator, plant_id, sn, "load", 0, "volt",
-            "load_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE,
-        ))
+        entities.append(
+            SunSynkVipSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "load",
+                0,
+                "volt",
+                "load_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+            )
+        )
 
     # --- Output sensors ---
     if inv_data.get("output"):
         output_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
             ("p_inv", "inverter_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-            ("fac", "output_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
+            (
+                "fac",
+                "output_frequency",
+                UnitOfFrequency.HERTZ,
+                SensorDeviceClass.FREQUENCY,
+                SensorStateClass.MEASUREMENT,
+            ),
         ]
         for key, tkey, unit, dc, sc in output_defs:
-            entities.append(SunSynkInverterSensor(
-                coordinator, plant_id, sn, key, tkey, "output", unit, dc, sc,
-            ))
+            entities.append(
+                SunSynkInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "output",
+                    unit,
+                    dc,
+                    sc,
+                )
+            )
         # Output voltage from vip[0]
-        entities.append(SunSynkVipSensor(
-            coordinator, plant_id, sn, "output", 0, "volt",
-            "output_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE,
-        ))
+        entities.append(
+            SunSynkVipSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "output",
+                0,
+                "volt",
+                "output_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+            )
+        )
 
     # --- Generator sensors ---
     if inv_data.get("gen"):
         gen_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("gen_total", "generator_total_energy", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("gen_daily", "generator_daily_energy", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL),
-            ("total_power", "generator_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-            ("gen_fac", "generator_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
+            (
+                "gen_total",
+                "generator_total_energy",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "gen_daily",
+                "generator_daily_energy",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            ),
+            (
+                "total_power",
+                "generator_power",
+                UnitOfPower.KILO_WATT,
+                SensorDeviceClass.POWER,
+                SensorStateClass.MEASUREMENT,
+            ),
+            (
+                "gen_fac",
+                "generator_frequency",
+                UnitOfFrequency.HERTZ,
+                SensorDeviceClass.FREQUENCY,
+                SensorStateClass.MEASUREMENT,
+            ),
         ]
         for key, tkey, unit, dc, sc in gen_defs:
-            entities.append(SunSynkInverterSensor(
-                coordinator, plant_id, sn, key, tkey, "gen", unit, dc, sc,
-            ))
+            entities.append(
+                SunSynkInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "gen",
+                    unit,
+                    dc,
+                    sc,
+                )
+            )
         # Generator voltage from vip[0]
-        entities.append(SunSynkVipSensor(
-            coordinator, plant_id, sn, "gen", 0, "volt",
-            "generator_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE,
-        ))
+        entities.append(
+            SunSynkVipSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "gen",
+                0,
+                "volt",
+                "generator_voltage",
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+            )
+        )
 
     # --- PV input sensors ---
     if inv_data.get("input"):
         # Total PV power
-        entities.append(SunSynkInverterSensor(
-            coordinator, plant_id, sn, "pac", "pv_power",
-            "input", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER,
-        ))
-        entities.append(SunSynkInverterSensor(
-            coordinator, plant_id, sn, "etoday", "pv_energy_today",
-            "input", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY,
-            SensorStateClass.TOTAL,
-        ))
-        entities.append(SunSynkInverterSensor(
-            coordinator, plant_id, sn, "etotal", "pv_energy_total",
-            "input", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY,
-            SensorStateClass.TOTAL,
-        ))
+        entities.append(
+            SunSynkInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "pac",
+                "pv_power",
+                "input",
+                UnitOfPower.KILO_WATT,
+                SensorDeviceClass.POWER,
+            )
+        )
+        entities.append(
+            SunSynkInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "etoday",
+                "pv_energy_today",
+                "input",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            )
+        )
+        entities.append(
+            SunSynkInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "etotal",
+                "pv_energy_total",
+                "input",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                SensorDeviceClass.ENERGY,
+                SensorStateClass.TOTAL,
+            )
+        )
         # Per-string PV sensors
         input_obj = inv_data["input"]
         pv_iv: list[Any] = getattr(input_obj, "pv_iv", None) or []
         for idx in range(len(pv_iv)):
-            entities.extend([
-                SunSynkPvStringSensor(
-                    coordinator, plant_id, sn, idx, "ppv",
-                    "pv_string_power", UnitOfPower.WATT, SensorDeviceClass.POWER,
-                ),
-                SunSynkPvStringSensor(
-                    coordinator, plant_id, sn, idx, "ipv",
-                    "pv_string_current", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT,
-                ),
-                SunSynkPvStringSensor(
-                    coordinator, plant_id, sn, idx, "vpv",
-                    "pv_string_voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE,
-                ),
-            ])
+            entities.extend(
+                [
+                    SunSynkPvStringSensor(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        idx,
+                        "ppv",
+                        "pv_string_power",
+                        UnitOfPower.WATT,
+                        SensorDeviceClass.POWER,
+                    ),
+                    SunSynkPvStringSensor(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        idx,
+                        "ipv",
+                        "pv_string_current",
+                        UnitOfElectricCurrent.AMPERE,
+                        SensorDeviceClass.CURRENT,
+                    ),
+                    SunSynkPvStringSensor(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        idx,
+                        "vpv",
+                        "pv_string_voltage",
+                        UnitOfElectricPotential.VOLT,
+                        SensorDeviceClass.VOLTAGE,
+                    ),
+                ]
+            )
 
     # --- Inverter settings sensors (read-only mirrors, disabled by default) ---
     if inv_data.get("settings"):
@@ -985,25 +1340,44 @@ def _create_inverter_sensors(
             ("battery_max_current_charge", "settings_battery_max_charge_current"),
         ]
         for key, tkey in settings_defs:
-            entities.append(SunSynkInverterSettingsSensor(
-                coordinator, plant_id, sn, key, tkey,
-                "settings", None, None, None,
-            ))
+            entities.append(
+                SunSynkInverterSettingsSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "settings",
+                    None,
+                    None,
+                    None,
+                )
+            )
 
     # --- Temperature sensors ---
     if inv_data.get("temp"):
-        entities.extend([
-            SunSynkInverterTempSensor(
-                coordinator, plant_id, sn, "dc_temp",
-                "dc_temperature", UnitOfTemperature.CELSIUS,
-                SensorDeviceClass.TEMPERATURE,
-            ),
-            SunSynkInverterTempSensor(
-                coordinator, plant_id, sn, "igbt_temp",
-                "igbt_temperature", UnitOfTemperature.CELSIUS,
-                SensorDeviceClass.TEMPERATURE,
-            ),
-        ])
+        entities.extend(
+            [
+                SunSynkInverterTempSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    "dc_temp",
+                    "dc_temperature",
+                    UnitOfTemperature.CELSIUS,
+                    SensorDeviceClass.TEMPERATURE,
+                ),
+                SunSynkInverterTempSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    "igbt_temp",
+                    "igbt_temperature",
+                    UnitOfTemperature.CELSIUS,
+                    SensorDeviceClass.TEMPERATURE,
+                ),
+            ]
+        )
 
     # --- Computed sensors (Phase 2) ---
     entities.extend(_create_computed_sensors(coordinator, plant_id, sn, inv_data))
@@ -1015,10 +1389,13 @@ def _create_inverter_sensors(
 # Compute helpers for derived sensors
 # ---------------------------------------------------------------------------
 
+
 def _compute_current_from_power(
-    source_key: str, power_attr: str,
+    source_key: str,
+    power_attr: str,
 ) -> Callable[[dict[str, Any]], float | None]:
     """Return a compute function that derives current from power / vip[0].volt."""
+
     def _compute(data: dict[str, Any]) -> float | None:
         source = data.get(source_key)
         if not source:
@@ -1031,13 +1408,17 @@ def _compute_current_from_power(
         if power is None or volt is None or volt == 0:
             return None
         return round(power * 1000 / volt, 2)
+
     return _compute
 
 
 def _compute_sum_of_list_attr(
-    source_key: str, list_attr: str, item_attr: str,
+    source_key: str,
+    list_attr: str,
+    item_attr: str,
 ) -> Callable[[dict[str, Any]], float | None]:
     """Return a compute function that sums an attribute across a list."""
+
     def _compute(data: dict[str, Any]) -> float | None:
         source = data.get(source_key)
         if not source:
@@ -1051,6 +1432,7 @@ def _compute_sum_of_list_attr(
             if val is not None:
                 total += val
         return round(total, 2)
+
     return _compute
 
 
@@ -1083,60 +1465,117 @@ def _compute_internal_power(data: dict[str, Any]) -> float | None:
 
 # (source_key, unique_key, name, compute_fn, unit, device_class)
 _COMPUTED_CURRENT_DEFS: list[tuple[str, str, str, Callable[[dict[str, Any]], float | None], str, SensorDeviceClass]] = [
-    ("load", "load_current", "computed_load_current",
-     _compute_current_from_power("load", "total_power"),
-     UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
-    ("grid", "grid_current", "computed_grid_current",
-     _compute_current_from_power("grid", "pac"),
-     UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
-    ("input", "pv_total_current", "computed_pv_total_current",
-     _compute_sum_of_list_attr("input", "pv_iv", "ipv"),
-     UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
-    ("output", "output_total_current", "computed_output_total_current",
-     _compute_sum_of_list_attr("output", "vip", "current"),
-     UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
-    ("gen", "gen_total_current", "computed_gen_total_current",
-     _compute_sum_of_list_attr("gen", "vip", "current"),
-     UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
+    (
+        "load",
+        "load_current",
+        "computed_load_current",
+        _compute_current_from_power("load", "total_power"),
+        UnitOfElectricCurrent.AMPERE,
+        SensorDeviceClass.CURRENT,
+    ),
+    (
+        "grid",
+        "grid_current",
+        "computed_grid_current",
+        _compute_current_from_power("grid", "pac"),
+        UnitOfElectricCurrent.AMPERE,
+        SensorDeviceClass.CURRENT,
+    ),
+    (
+        "input",
+        "pv_total_current",
+        "computed_pv_total_current",
+        _compute_sum_of_list_attr("input", "pv_iv", "ipv"),
+        UnitOfElectricCurrent.AMPERE,
+        SensorDeviceClass.CURRENT,
+    ),
+    (
+        "output",
+        "output_total_current",
+        "computed_output_total_current",
+        _compute_sum_of_list_attr("output", "vip", "current"),
+        UnitOfElectricCurrent.AMPERE,
+        SensorDeviceClass.CURRENT,
+    ),
+    (
+        "gen",
+        "gen_total_current",
+        "computed_gen_total_current",
+        _compute_sum_of_list_attr("gen", "vip", "current"),
+        UnitOfElectricCurrent.AMPERE,
+        SensorDeviceClass.CURRENT,
+    ),
 ]
 
 
 def _create_computed_sensors(
-    coordinator: SunSynkCoordinator, plant_id: int, sn: str, inv_data: dict[str, Any],
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    sn: str,
+    inv_data: dict[str, Any],
 ) -> list[SensorEntity]:
     """Create computed sensors that derive values from multiple data sources."""
     entities: list[SensorEntity] = []
 
     if inv_data.get("battery"):
-        entities.append(SunSynkComputedSensor(
-            coordinator, plant_id, sn, "battery_efficiency",
-            "computed_battery_efficiency", _compute_battery_efficiency,
-            PERCENTAGE, None,
-        ))
+        entities.append(
+            SunSynkComputedSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "battery_efficiency",
+                "computed_battery_efficiency",
+                _compute_battery_efficiency,
+                PERCENTAGE,
+                None,
+            )
+        )
 
     for source_key, unique_key, tkey, compute_fn, unit, dc in _COMPUTED_CURRENT_DEFS:
         if inv_data.get(source_key):
-            entities.append(SunSynkComputedSensor(
-                coordinator, plant_id, sn, unique_key, tkey, compute_fn, unit, dc,
-            ))
+            entities.append(
+                SunSynkComputedSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    unique_key,
+                    tkey,
+                    compute_fn,
+                    unit,
+                    dc,
+                )
+            )
 
     if all(inv_data.get(k) for k in ("input", "grid", "battery", "load")):
-        entities.append(SunSynkComputedSensor(
-            coordinator, plant_id, sn, "internal_power_usage",
-            "computed_internal_power_usage", _compute_internal_power,
-            UnitOfPower.KILO_WATT, SensorDeviceClass.POWER,
-        ))
+        entities.append(
+            SunSynkComputedSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "internal_power_usage",
+                "computed_internal_power_usage",
+                _compute_internal_power,
+                UnitOfPower.KILO_WATT,
+                SensorDeviceClass.POWER,
+            )
+        )
 
     # Raw data sensors (usable containers for template sensor compatibility)
     for source_type, raw_name in (
-        ("grid",   "SunSynk Usable Grid"),
-        ("load",   "SunSynk Usable Load"),
+        ("grid", "SunSynk Usable Grid"),
+        ("load", "SunSynk Usable Load"),
         ("output", "SunSynk Usable Inverter"),
     ):
         if inv_data.get(source_type):
-            entities.append(SunSynkRawDataSensor(
-                coordinator, plant_id, sn, source_type, raw_name,
-            ))
+            entities.append(
+                SunSynkRawDataSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    source_type,
+                    raw_name,
+                )
+            )
 
     return entities
 
@@ -1145,8 +1584,11 @@ def _create_computed_sensors(
 # Factory: consolidated plant sensors (multi-inverter aggregation)
 # ---------------------------------------------------------------------------
 
+
 def _create_consolidated_sensors(
-    coordinator: SunSynkCoordinator, plant_id: int, inverter_count: int,
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+    inverter_count: int,
 ) -> list[SensorEntity]:
     """Create consolidated sensors that sum across all inverters in a plant.
 
@@ -1156,17 +1598,73 @@ def _create_consolidated_sensors(
         return []
 
     consol_defs: list[tuple[str, str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-        ("input", "pac", "total_pv_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-        ("load", "total_power", "total_load_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-        ("battery", "power", "total_battery_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-        ("battery", "current", "total_battery_current", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, SensorStateClass.MEASUREMENT),
-        ("grid", "pac", "total_grid_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-        ("output", "pac", "total_output_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
-        ("gen", "total_power", "total_generator_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+        (
+            "input",
+            "pac",
+            "total_pv_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "load",
+            "total_power",
+            "total_load_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "battery",
+            "power",
+            "total_battery_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "battery",
+            "current",
+            "total_battery_current",
+            UnitOfElectricCurrent.AMPERE,
+            SensorDeviceClass.CURRENT,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "grid",
+            "pac",
+            "total_grid_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "output",
+            "pac",
+            "total_output_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        (
+            "gen",
+            "total_power",
+            "total_generator_power",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
     ]
     return [
         SunSynkConsolidatedSensor(
-            coordinator, plant_id, source, key, name, unit, dc, sc,
+            coordinator,
+            plant_id,
+            source,
+            key,
+            name,
+            unit,
+            dc,
+            sc,
         )
         for source, key, name, unit, dc, sc in consol_defs
     ]
@@ -1175,6 +1673,7 @@ def _create_consolidated_sensors(
 # ---------------------------------------------------------------------------
 # Platform setup
 # ---------------------------------------------------------------------------
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -1191,16 +1690,21 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
 
     # Gateway sensors
-    entities.extend(_create_gateway_sensors(
-        coordinator, coordinator.data.get("gateways", []),
-    ))
+    entities.extend(
+        _create_gateway_sensors(
+            coordinator,
+            coordinator.data.get("gateways", []),
+        )
+    )
 
     # Event sensors
-    entities.extend([
-        SunSynkEventSensor(coordinator, 1, "info_events"),
-        SunSynkEventSensor(coordinator, 2, "warning_events"),
-        SunSynkEventSensor(coordinator, 3, "alarm_events"),
-    ])
+    entities.extend(
+        [
+            SunSynkEventSensor(coordinator, 1, "info_events"),
+            SunSynkEventSensor(coordinator, 2, "warning_events"),
+            SunSynkEventSensor(coordinator, 3, "alarm_events"),
+        ]
+    )
 
     # Notification sensor
     entities.append(SunSynkNotificationSensor(coordinator))
@@ -1218,13 +1722,9 @@ async def async_setup_entry(
 
         inverters = plant_data.get("inverters", {})
         for sn, inv_data in inverters.items():
-            entities.extend(
-                _create_inverter_sensors(coordinator, plant_id, sn, inv_data)
-            )
+            entities.extend(_create_inverter_sensors(coordinator, plant_id, sn, inv_data))
 
         # Multi-inverter consolidated sensors
-        entities.extend(
-            _create_consolidated_sensors(coordinator, plant_id, len(inverters))
-        )
+        entities.extend(_create_consolidated_sensors(coordinator, plant_id, len(inverters)))
 
     async_add_entities(entities)

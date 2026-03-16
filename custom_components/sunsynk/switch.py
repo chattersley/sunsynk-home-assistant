@@ -224,25 +224,51 @@ async def async_setup_entry(
 
             # Timer toggles (paired: time{N}on + genTime{N}on)
             for api_key, name, settings_key, paired_api, paired_sk in TIMER_TOGGLE_DEFS:
-                entities.append(SunSynkPairedTimerSwitch(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, paired_api, paired_sk,
-                    token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkPairedTimerSwitch(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        paired_api,
+                        paired_sk,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
             # Gen timer toggles (paired: genTime{N}on + time{N}on)
             for api_key, name, settings_key, paired_api, paired_sk in GEN_TIMER_TOGGLE_DEFS:
-                entities.append(SunSynkPairedTimerSwitch(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, paired_api, paired_sk,
-                    token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkPairedTimerSwitch(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        paired_api,
+                        paired_sk,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
             # Simple toggles (use timer, energy mode)
             for api_key, name, settings_key in SIMPLE_TOGGLE_DEFS:
-                entities.append(SunSynkSimpleSwitch(
-                    coordinator, plant_id, sn, api_key, name,
-                    settings_key, token_manager, region_idx,
-                ))
+                entities.append(
+                    SunSynkSimpleSwitch(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
+                        token_manager,
+                        region_idx,
+                    )
+                )
 
     async_add_entities(entities)
