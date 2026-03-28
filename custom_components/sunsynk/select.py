@@ -222,7 +222,11 @@ class SunSynkChargeTimeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[
             _LOGGER.warning("Invalid charge time slot: %s", option)
             return
         _LOGGER.debug(
-            "Setting charge %s slot %d=%s for plant %s", self._field, self._slot, option, self._plant_id,
+            "Setting charge %s slot %d=%s for plant %s",
+            self._field,
+            self._slot,
+            option,
+            self._plant_id,
         )
         charges = get_plant_charges(self.coordinator, self._plant_id)
         kwargs = {self._field: option}
@@ -294,27 +298,44 @@ class SunSynkPricingTypeSelect(CoordinatorEntity, SelectEntity):  # type: ignore
         if option == "1":
             # Constant Price: single entry 00:00-24:00
             price = str(getattr(charges[0], "price", 0)) if charges else "0"
-            new_charges.append(PlantIncomeCharge(
-                price=price, type=typed, start_range="00:00", end_range="24:00",
-            ))
+            new_charges.append(
+                PlantIncomeCharge(
+                    price=price,
+                    type=typed,
+                    start_range="00:00",
+                    end_range="24:00",
+                )
+            )
         elif option == "3":
             # Live Price: single entry with empty ranges
-            new_charges.append(PlantIncomeCharge(
-                price="0", type=typed, start_range="", end_range="",
-            ))
+            new_charges.append(
+                PlantIncomeCharge(
+                    price="0",
+                    type=typed,
+                    start_range="",
+                    end_range="",
+                )
+            )
         else:
             # Time of Use: preserve existing slots, update type
             for charge in charges:
-                new_charges.append(PlantIncomeCharge(
-                    price=str(getattr(charge, "price", 0)),
-                    type=typed,
-                    start_range=getattr(charge, "start_range", None),
-                    end_range=getattr(charge, "end_range", None),
-                ))
+                new_charges.append(
+                    PlantIncomeCharge(
+                        price=str(getattr(charge, "price", 0)),
+                        type=typed,
+                        start_range=getattr(charge, "start_range", None),
+                        end_range=getattr(charge, "end_range", None),
+                    )
+                )
             if not new_charges:
-                new_charges.append(PlantIncomeCharge(
-                    price="0", type=typed, start_range="00:00", end_range="24:00",
-                ))
+                new_charges.append(
+                    PlantIncomeCharge(
+                        price="0",
+                        type=typed,
+                        start_range="00:00",
+                        end_range="24:00",
+                    )
+                )
 
         currency_id, invest = get_plant_income_params(self.coordinator, self._plant_id)
         await async_set_plant_income(
@@ -354,9 +375,7 @@ async def async_setup_entry(
         # Charge time range selects
         for slot in range(len(charges)):
             for field in ("start_range", "end_range"):
-                entities.append(
-                    SunSynkChargeTimeSelect(coordinator, plant_id, slot, field, token_manager, region_idx)
-                )
+                entities.append(SunSynkChargeTimeSelect(coordinator, plant_id, slot, field, token_manager, region_idx))
 
         for sn, inv_data in plant_data.get("inverters", {}).items():
             if not inv_data.get("settings"):
