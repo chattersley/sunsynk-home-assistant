@@ -235,7 +235,7 @@ class SunSynkChargePriceNumber(CoordinatorEntity, NumberEntity):  # type: ignore
             return None
         try:
             return float(price)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     async def async_set_native_value(self, value: float) -> None:
@@ -277,9 +277,7 @@ async def async_setup_entry(
         # Charge price number entities
         charges = get_plant_charges(coordinator, plant_id)
         for slot in range(len(charges)):
-            entities.append(
-                SunSynkChargePriceNumber(coordinator, plant_id, slot, token_manager, region_idx)
-            )
+            entities.append(SunSynkChargePriceNumber(coordinator, plant_id, slot, token_manager, region_idx))
 
         for sn, inv_data in plant_data.get("inverters", {}).items():
             if not inv_data.get("settings"):

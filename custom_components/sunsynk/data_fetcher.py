@@ -381,10 +381,30 @@ _API_KEY_TO_SNAKE: dict[str, str] = {
 
 # Minimum required fields for the set endpoint (snake_case names matching InverterSettings attrs)
 _MIN_REQUIRED_FIELDS: list[str] = [
-    "sell_time1", "sell_time2", "sell_time3", "sell_time4", "sell_time5", "sell_time6",
-    "cap1", "cap2", "cap3", "cap4", "cap5", "cap6",
-    "time1on", "time2on", "time3on", "time4on", "time5on", "time6on",
-    "gen_time1on", "gen_time2on", "gen_time3on", "gen_time4on", "gen_time5on", "gen_time6on",
+    "sell_time1",
+    "sell_time2",
+    "sell_time3",
+    "sell_time4",
+    "sell_time5",
+    "sell_time6",
+    "cap1",
+    "cap2",
+    "cap3",
+    "cap4",
+    "cap5",
+    "cap6",
+    "time1on",
+    "time2on",
+    "time3on",
+    "time4on",
+    "time5on",
+    "time6on",
+    "gen_time1on",
+    "gen_time2on",
+    "gen_time3on",
+    "gen_time4on",
+    "gen_time5on",
+    "gen_time6on",
 ]
 
 

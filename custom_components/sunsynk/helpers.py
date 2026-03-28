@@ -136,12 +136,14 @@ def build_income_charges(
         c_price = price if i == slot and price is not None else str(getattr(charge, "price", 0))
         c_start = start_range if i == slot and start_range is not None else getattr(charge, "start_range", None)
         c_end = end_range if i == slot and end_range is not None else getattr(charge, "end_range", None)
-        result.append(PlantIncomeCharge(
-            price=c_price,
-            type=to_charge_type(charge_type),
-            start_range=c_start,
-            end_range=c_end,
-        ))
+        result.append(
+            PlantIncomeCharge(
+                price=c_price,
+                type=to_charge_type(charge_type),
+                start_range=c_start,
+                end_range=c_end,
+            )
+        )
     return result
 
 
