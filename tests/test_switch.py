@@ -53,6 +53,7 @@ def _make_coordinator_data(settings=None):
         "plants": {
             1: {
                 "info": SimpleNamespace(id=1, name="Plant"),
+                "detail": None,
                 "flow": SimpleNamespace(),
                 "inverters": {
                     "SN001": {

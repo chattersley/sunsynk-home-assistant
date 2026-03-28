@@ -31,8 +31,10 @@ from .const import DOMAIN
 from .helpers import (
     extract_value,
     get_inv_data,
+    get_plant_charges,
     get_source_obj,
     inverter_device_info,
+    plant_device_info,
     safe_float,
 )
 
@@ -217,6 +219,61 @@ class SunSynkPlantFlowSensor(SunSynkBaseSensor):
         if plant and plant.get("flow"):
             return getattr(plant["flow"], self._key, None)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Plant charge sensor
+# ---------------------------------------------------------------------------
+
+PRICING_TYPE_LABELS = {1: "Constant Price", 2: "Time of Use", 3: "Live Price"}
+
+
+class SunSynkPlantChargeSensor(SunSynkBaseSensor):
+    """Sensor for a plant electricity charge slot."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        plant_id: int,
+        slot: int,
+    ) -> None:
+        """Initialise the plant charge sensor."""
+        super().__init__(
+            coordinator,
+            f"plant_{plant_id}_charge_{slot}",
+            f"charge_slot_{slot}",
+            state_class=None,
+        )
+        self._plant_id = plant_id
+        self._slot = slot
+        self._attr_device_info = plant_device_info(coordinator, plant_id)
+
+    def _get_charge(self) -> Any | None:
+        charges = get_plant_charges(self.coordinator, self._plant_id)
+        if self._slot < len(charges):
+            return charges[self._slot]
+        return None
+
+    def _compute_native_value(self) -> Any | None:
+        charge = self._get_charge()
+        if charge is None:
+            return None
+        price = getattr(charge, "price", None)
+        return str(price) if price is not None else None
+
+    def _compute_extra_state_attributes(self) -> dict[str, Any] | None:
+        charge = self._get_charge()
+        if charge is None:
+            return None
+        charge_type = getattr(charge, "type", None)
+        return {
+            "start_range": getattr(charge, "start_range", None),
+            "end_range": getattr(charge, "end_range", None),
+            "type": charge_type,
+            "type_label": PRICING_TYPE_LABELS.get(charge_type, "Unknown") if charge_type else None,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -1719,6 +1776,11 @@ async def async_setup_entry(
     for plant_id, plant_data in coordinator.data.get("plants", {}).items():
         if plant_data.get("flow"):
             entities.extend(_create_plant_flow_sensors(coordinator, plant_id))
+
+        # Plant charge sensors
+        charges = get_plant_charges(coordinator, plant_id)
+        for slot in range(len(charges)):
+            entities.append(SunSynkPlantChargeSensor(coordinator, plant_id, slot))
 
         inverters = plant_data.get("inverters", {})
         for sn, inv_data in inverters.items():

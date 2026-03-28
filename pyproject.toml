@@ -8,7 +8,7 @@ dependencies = [
     "cryptography>=46.0.5",
     "homeassistant>=2026.2.3",
     "python-dotenv>=1.2.2",
-    "sunsynk-python>=0.1.8",
+    "sunsynk-python>=0.2.1",
 ]
 
 [dependency-groups]

@@ -101,16 +101,17 @@ class TestWriteSettings:
         mock_client = MagicMock()
         mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_client.settings.write_inverter_settings_async = AsyncMock(
+        mock_client.settings.set_inverter_settings_async = AsyncMock(
             return_value=MagicMock(code=0, msg="success"),
         )
 
         tm = TokenManager("test@example.com", "pass", 0)
         result = await async_write_settings(tm, 0, "SN123", {"cap1": "50"})
 
-        mock_client.settings.write_inverter_settings_async.assert_called_once()
-        call_kwargs = mock_client.settings.write_inverter_settings_async.call_args.kwargs
-        assert call_kwargs["sn"] == "SN123"
+        mock_client.settings.set_inverter_settings_async.assert_called_once()
+        call_kwargs = mock_client.settings.set_inverter_settings_async.call_args.kwargs
+        assert call_kwargs["sn_param"] == "SN123"
+        assert call_kwargs["cap1"] == "50"
         assert result["code"] == 0
         assert result["msg"] == "success"
 
@@ -126,14 +127,14 @@ class TestWriteSettings:
         mock_client = MagicMock()
         mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_client.settings.write_inverter_settings_async = AsyncMock(
+        mock_client.settings.set_inverter_settings_async = AsyncMock(
             side_effect=RuntimeError("fail"),
         )
 
         tm = TokenManager("test@example.com", "pass", 0)
         tracker = ErrorTracker()
         with pytest.raises(RuntimeError):
-            await async_write_settings(tm, 0, "SN123", {"cap1": "50"}, tracker)
+            await async_write_settings(tm, 0, "SN123", {"cap1": "50"}, error_tracker=tracker)
 
         assert tracker.as_dict()["Updates"]["count"] == 1
 
