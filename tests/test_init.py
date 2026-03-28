@@ -37,6 +37,7 @@ def _make_coordinator_data():
         "plants": {
             1: {
                 "info": SimpleNamespace(id=1, name="My Plant"),
+                "detail": None,
                 "flow": SimpleNamespace(
                     pvPower=0, battPower=0, gridOrMeterPower=0,
                     loadOrEpsPower=0, soc=75, genPower=0,

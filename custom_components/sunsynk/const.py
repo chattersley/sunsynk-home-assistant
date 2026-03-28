@@ -48,3 +48,6 @@ REGIONS = {
 
 # Valid 30-minute time slot values for sell times
 VALID_TIME_SLOTS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
+
+# Valid time slots for charge ranges (includes 24:00 as end boundary)
+VALID_CHARGE_TIME_SLOTS = [*VALID_TIME_SLOTS, "24:00"]

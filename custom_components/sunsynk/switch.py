@@ -124,6 +124,7 @@ class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore
             self._region_idx,
             self._sn,
             payload,
+            current_settings=settings,
             async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
@@ -189,6 +190,7 @@ class SunSynkSimpleSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore[misc
             self._region_idx,
             self._sn,
             payload,
+            current_settings=get_inverter_settings(self.coordinator, self._plant_id, self._sn),
             async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()

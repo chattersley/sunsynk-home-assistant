@@ -184,6 +184,17 @@ def _make_coordinator_data():
         "plants": {
             1: {
                 "info": SimpleNamespace(id=1, name="My Plant"),
+                "detail": SimpleNamespace(
+                    charges=[
+                        SimpleNamespace(
+                            id=1, price=27.0, type=1,
+                            start_range="00:00", end_range="24:00",
+                            station_id=1, create_at=None, status="import",
+                        ),
+                    ],
+                    currency=SimpleNamespace(id=366, code="GBP", text="British Pound"),
+                    invest=0.0,
+                ),
                 "flow": _make_flow(),
                 "inverters": {
                     "SN001": {

@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 from sunsynk_api_client import SunSynk
-from sunsynk_api_client.models import WriteInverterSettingsRequestBody
+from sunsynk_api_client.models import InverterSettings, PlantIncomeCharge
 
 from .auth import AuthResult, async_authenticate
 from .const import SunSynkApiError
@@ -222,9 +222,19 @@ async def _async_fetch_plant_data(client: SunSynk, plant: Any, error_tracker: Er
 
     plant_data: dict[str, Any] = {
         "info": plant,
+        "detail": None,
         "flow": None,
         "inverters": {},
     }
+
+    _LOGGER.debug("Fetching plant detail: plant_id=%s", plant_id)
+    plant_data["detail"] = await _async_fetch_successful(
+        client.plants.get_plant_async(plant_id=plant_id),
+        error_tracker,
+        "Flow",
+    )
+    _LOGGER.debug("Plant detail fetched: plant_id=%s has_detail=%s", plant_id, plant_data["detail"] is not None)
+    _trace(_LOGGER, "Plant detail: %s", plant_data["detail"])
 
     _LOGGER.debug("Fetching plant flow: plant_id=%s", plant_id)
     plant_data["flow"] = await _async_fetch_successful(
@@ -334,16 +344,131 @@ async def async_fetch_all_data(
     return data
 
 
+# camelCase API keys → snake_case kwargs for set_inverter_settings_async
+_API_KEY_TO_SNAKE: dict[str, str] = {
+    "sellTime1": "sell_time1",
+    "sellTime2": "sell_time2",
+    "sellTime3": "sell_time3",
+    "sellTime4": "sell_time4",
+    "sellTime5": "sell_time5",
+    "sellTime6": "sell_time6",
+    "cap1": "cap1",
+    "cap2": "cap2",
+    "cap3": "cap3",
+    "cap4": "cap4",
+    "cap5": "cap5",
+    "cap6": "cap6",
+    "time1on": "time1on",
+    "time2on": "time2on",
+    "time3on": "time3on",
+    "time4on": "time4on",
+    "time5on": "time5on",
+    "time6on": "time6on",
+    "genTime1on": "gen_time1on",
+    "genTime2on": "gen_time2on",
+    "genTime3on": "gen_time3on",
+    "genTime4on": "gen_time4on",
+    "genTime5on": "gen_time5on",
+    "genTime6on": "gen_time6on",
+    "peakAndVallery": "peak_and_vallery",
+    "energyMode": "energy_mode",
+    "sysWorkMode": "sys_work_mode",
+    "batteryRestartCap": "battery_restart_cap",
+    "batteryShutdownCap": "battery_shutdown_cap",
+    "batteryMaxCurrentCharge": "battery_max_current_charge",
+    "batteryLowCap": "battery_low_cap",
+}
+
+# Minimum required fields for the set endpoint (snake_case names matching InverterSettings attrs)
+_MIN_REQUIRED_FIELDS: list[str] = [
+    "sell_time1", "sell_time2", "sell_time3", "sell_time4", "sell_time5", "sell_time6",
+    "cap1", "cap2", "cap3", "cap4", "cap5", "cap6",
+    "time1on", "time2on", "time3on", "time4on", "time5on", "time6on",
+    "gen_time1on", "gen_time2on", "gen_time3on", "gen_time4on", "gen_time5on", "gen_time6on",
+]
+
+
+def _build_set_kwargs(
+    settings: dict[str, str],
+    current_settings: InverterSettings | None,
+) -> dict[str, Any]:
+    """Build kwargs for set_inverter_settings_async from camelCase settings dict.
+
+    Merges user changes with minimum required fields from current inverter settings.
+    """
+    # Start with minimum required fields from current settings
+    kwargs: dict[str, Any] = {}
+    if current_settings is not None:
+        for field_name in _MIN_REQUIRED_FIELDS:
+            val = getattr(current_settings, field_name, None)
+            if val is not None:
+                kwargs[field_name] = val
+
+    # Overlay user's changes (converting camelCase keys to snake_case)
+    for api_key, value in settings.items():
+        snake_key = _API_KEY_TO_SNAKE.get(api_key, api_key)
+        kwargs[snake_key] = value
+
+    return kwargs
+
+
 async def async_write_settings(
     token_manager: TokenManager,
     region_idx: int,
     sn: str,
     settings: dict[str, str],
+    current_settings: InverterSettings | None = None,
     error_tracker: ErrorTracker | None = None,
     async_client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     """Write settings to an inverter asynchronously. Returns response dict with code/msg."""
     _LOGGER.debug("async_write_settings: sn=%s settings=%s", sn, settings)
+
+    if error_tracker is None:
+        error_tracker = ErrorTracker()
+
+    try:
+        token = await token_manager.async_get_token()
+    except Exception as err:
+        error_tracker.record("Bearer", err)
+        raise
+
+    kwargs = _build_set_kwargs(settings, current_settings)
+    _LOGGER.debug("async_write_settings: resolved kwargs=%s", kwargs)
+
+    async with SunSynk(
+        bearer_auth=token,
+        server_idx=region_idx,
+        async_client=async_client,
+    ) as client:
+        try:
+            resp = await client.settings.set_inverter_settings_async(
+                sn_param=sn,
+                **kwargs,
+            )
+        except Exception as err:
+            _LOGGER.exception("Error writing settings for inverter %s", sn)
+            error_tracker.record("Updates", err)
+            raise
+
+    code = getattr(resp, "code", None)
+    msg = getattr(resp, "msg", None)
+    _LOGGER.debug("async_write_settings result: code=%s msg=%s", code, msg)
+    return {"code": code, "msg": msg}
+
+
+async def async_set_plant_income(
+    token_manager: TokenManager,
+    region_idx: int,
+    plant_id: str,
+    currency: int,
+    invest: float,
+    charges: list[PlantIncomeCharge],
+    error_tracker: ErrorTracker | None = None,
+    async_client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    """Set plant income pricing. Returns response dict with code/msg."""
+    _LOGGER.debug("async_set_plant_income: plant_id=%s charges=%s", plant_id, charges)
 
     if error_tracker is None:
         error_tracker = ErrorTracker()
@@ -360,16 +485,19 @@ async def async_write_settings(
         async_client=async_client,
     ) as client:
         try:
-            resp = await client.settings.write_inverter_settings_async(
-                sn=sn,
-                body=WriteInverterSettingsRequestBody(**settings),
+            resp = await client.plants.set_plant_income_async(
+                plant_id=plant_id,
+                id=plant_id,
+                currency=currency,
+                invest=invest,
+                charges=charges,
             )
         except Exception as err:
-            _LOGGER.exception("Error writing settings for inverter %s", sn)
+            _LOGGER.exception("Error setting plant income for plant %s", plant_id)
             error_tracker.record("Updates", err)
             raise
 
     code = getattr(resp, "code", None)
     msg = getattr(resp, "msg", None)
-    _LOGGER.debug("async_write_settings result: code=%s msg=%s", code, msg)
+    _LOGGER.debug("async_set_plant_income result: code=%s msg=%s", code, msg)
     return {"code": code, "msg": msg}

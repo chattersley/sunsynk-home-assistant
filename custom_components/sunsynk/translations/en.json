@@ -190,7 +190,13 @@
       "settings_sell_time_6_pac": { "name": "Sell time 6 power" },
       "settings_battery_restart_cap": { "name": "Battery restart cap" },
       "settings_battery_shutdown_cap": { "name": "Battery shutdown cap" },
-      "settings_battery_max_charge_current": { "name": "Battery max charge current" }
+      "settings_battery_max_charge_current": { "name": "Battery max charge current" },
+      "charge_slot_0": { "name": "Charge slot 1" },
+      "charge_slot_1": { "name": "Charge slot 2" },
+      "charge_slot_2": { "name": "Charge slot 3" },
+      "charge_slot_3": { "name": "Charge slot 4" },
+      "charge_slot_4": { "name": "Charge slot 5" },
+      "charge_slot_5": { "name": "Charge slot 6" }
     },
     "number": {
       "cap_soc_floor_1": { "name": "SOC floor 1" },
@@ -201,7 +207,13 @@
       "cap_soc_floor_6": { "name": "SOC floor 6" },
       "battery_restart_cap": { "name": "Battery restart cap" },
       "battery_shutdown_cap": { "name": "Battery shutdown cap" },
-      "battery_max_charge_current": { "name": "Battery max charge current" }
+      "battery_max_charge_current": { "name": "Battery max charge current" },
+      "charge_price_0": { "name": "Charge price 1" },
+      "charge_price_1": { "name": "Charge price 2" },
+      "charge_price_2": { "name": "Charge price 3" },
+      "charge_price_3": { "name": "Charge price 4" },
+      "charge_price_4": { "name": "Charge price 5" },
+      "charge_price_5": { "name": "Charge price 6" }
     },
     "select": {
       "sell_time_1": { "name": "Sell time 1" },
@@ -210,7 +222,20 @@
       "sell_time_4": { "name": "Sell time 4" },
       "sell_time_5": { "name": "Sell time 5" },
       "sell_time_6": { "name": "Sell time 6" },
-      "sys_work_mode": { "name": "System work mode" }
+      "sys_work_mode": { "name": "System work mode" },
+      "pricing_type": { "name": "Pricing type" },
+      "charge_start_0": { "name": "Charge start 1" },
+      "charge_start_1": { "name": "Charge start 2" },
+      "charge_start_2": { "name": "Charge start 3" },
+      "charge_start_3": { "name": "Charge start 4" },
+      "charge_start_4": { "name": "Charge start 5" },
+      "charge_start_5": { "name": "Charge start 6" },
+      "charge_end_0": { "name": "Charge end 1" },
+      "charge_end_1": { "name": "Charge end 2" },
+      "charge_end_2": { "name": "Charge end 3" },
+      "charge_end_3": { "name": "Charge end 4" },
+      "charge_end_4": { "name": "Charge end 5" },
+      "charge_end_5": { "name": "Charge end 6" }
     },
     "switch": {
       "timer_1_on": { "name": "Timer 1" },

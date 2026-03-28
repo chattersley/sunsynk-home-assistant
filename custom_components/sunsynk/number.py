@@ -13,8 +13,15 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunSynkConfigEntry, SunSynkCoordinator
 from .const import DOMAIN
-from .data_fetcher import TokenManager, async_write_settings
-from .helpers import get_inverter_settings, inverter_device_info
+from .data_fetcher import TokenManager, async_set_plant_income, async_write_settings
+from .helpers import (
+    build_income_charges,
+    get_inverter_settings,
+    get_plant_charges,
+    get_plant_income_params,
+    inverter_device_info,
+    plant_device_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,6 +111,7 @@ class SunSynkCapNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             self._region_idx,
             self._sn,
             {self._api_key: int_val},
+            current_settings=get_inverter_settings(self.coordinator, self._plant_id, self._sn),
             async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
@@ -176,6 +184,74 @@ class SunSynkExtraNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
             self._region_idx,
             self._sn,
             {self._api_key: str_val},
+            current_settings=get_inverter_settings(self.coordinator, self._plant_id, self._sn),
+            async_client=get_async_client(self.hass),
+        )
+        await self.coordinator.async_request_refresh()
+
+
+class SunSynkChargePriceNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
+    """Number entity for a plant electricity charge price."""
+
+    _attr_native_min_value = 0
+    _attr_native_max_value = 10000
+    _attr_native_step = 0.01
+    _attr_mode = NumberMode.BOX
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        plant_id: int,
+        slot: int,
+        token_manager: TokenManager,
+        region_idx: int,
+    ) -> None:
+        """Initialise the charge price number entity."""
+        super().__init__(coordinator)
+        self._plant_id = plant_id
+        self._slot = slot
+        self._token_manager = token_manager
+        self._region_idx = region_idx
+        self._attr_unique_id = f"{DOMAIN}_plant_{plant_id}_charge_price_{slot}"
+        self._attr_translation_key = f"charge_price_{slot}"
+        self._attr_device_info = plant_device_info(coordinator, plant_id)
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        charges = get_plant_charges(self.coordinator, self._plant_id)
+        self._attr_available = self._slot < len(charges)
+        self._attr_native_value = self._compute_native_value() if self._attr_available else None
+        super()._handle_coordinator_update()
+
+    def _compute_native_value(self) -> float | None:
+        """Return the current price from coordinator data."""
+        charges = get_plant_charges(self.coordinator, self._plant_id)
+        if self._slot >= len(charges):
+            return None
+        price = getattr(charges[self._slot], "price", None)
+        if price is None:
+            return None
+        try:
+            return float(price)
+        except (ValueError, TypeError):
+            return None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Write the new price to the plant income."""
+        _LOGGER.debug("Setting charge price slot %d=%s for plant %s", self._slot, value, self._plant_id)
+        charges = get_plant_charges(self.coordinator, self._plant_id)
+        new_charges = build_income_charges(charges, self._slot, price=str(value))
+        currency_id, invest = get_plant_income_params(self.coordinator, self._plant_id)
+
+        await async_set_plant_income(
+            self._token_manager,
+            self._region_idx,
+            str(self._plant_id),
+            currency_id,
+            invest,
+            new_charges,
             async_client=get_async_client(self.hass),
         )
         await self.coordinator.async_request_refresh()
@@ -198,6 +274,13 @@ async def async_setup_entry(
     entities: list[NumberEntity] = []
 
     for plant_id, plant_data in coordinator.data.get("plants", {}).items():
+        # Charge price number entities
+        charges = get_plant_charges(coordinator, plant_id)
+        for slot in range(len(charges)):
+            entities.append(
+                SunSynkChargePriceNumber(coordinator, plant_id, slot, token_manager, region_idx)
+            )
+
         for sn, inv_data in plant_data.get("inverters", {}).items():
             if not inv_data.get("settings"):
                 continue
