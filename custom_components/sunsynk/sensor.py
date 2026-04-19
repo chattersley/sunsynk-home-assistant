@@ -941,7 +941,7 @@ def _create_inverter_sensors(
             "pac",
             "inverter_power_output",
             "info",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
         ),
     ]
@@ -979,7 +979,7 @@ def _create_inverter_sensors(
                 SensorDeviceClass.CURRENT,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("correct_cap", "battery_capacity", UnitOfEnergy.KILO_WATT_HOUR, None, None),
+            ("correct_cap", "battery_capacity", "Ah", None, SensorStateClass.MEASUREMENT),
             (
                 "current",
                 "battery_current",
@@ -987,7 +987,7 @@ def _create_inverter_sensors(
                 SensorDeviceClass.CURRENT,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("power", "battery_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("power", "battery_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "etotal_chg",
                 "battery_total_charge",
@@ -1042,7 +1042,7 @@ def _create_inverter_sensors(
     # --- Grid sensors ---
     if inv_data.get("grid"):
         grid_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("pac", "grid_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("pac", "grid_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             ("fac", "grid_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
             ("status", "grid_status", None, None, None),
             ("pf", "grid_power_factor", None, SensorDeviceClass.POWER_FACTOR, SensorStateClass.MEASUREMENT),
@@ -1077,7 +1077,7 @@ def _create_inverter_sensors(
             (
                 "limiter_total_power",
                 "grid_limiter_total_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1114,7 +1114,7 @@ def _create_inverter_sensors(
     # --- Load sensors ---
     if inv_data.get("load"):
         load_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("total_power", "load_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("total_power", "load_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "total_used",
                 "load_total_used",
@@ -1140,7 +1140,7 @@ def _create_inverter_sensors(
             (
                 "ups_power_total",
                 "load_ups_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1177,7 +1177,7 @@ def _create_inverter_sensors(
     # --- Output sensors ---
     if inv_data.get("output"):
         output_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("p_inv", "inverter_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("p_inv", "inverter_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "fac",
                 "output_frequency",
@@ -1235,7 +1235,7 @@ def _create_inverter_sensors(
             (
                 "total_power",
                 "generator_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1287,7 +1287,7 @@ def _create_inverter_sensors(
                 "pac",
                 "pv_power",
                 "input",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
             )
         )
@@ -1464,7 +1464,7 @@ def _compute_current_from_power(
         volt = safe_float(getattr(vip[0], "volt", None))
         if power is None or volt is None or volt == 0:
             return None
-        return round(power * 1000 / volt, 2)
+        return round(power / volt, 2)
 
     return _compute
 
@@ -1612,7 +1612,7 @@ def _create_computed_sensors(
                 "internal_power_usage",
                 "computed_internal_power_usage",
                 _compute_internal_power,
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
             )
         )
@@ -1659,7 +1659,7 @@ def _create_consolidated_sensors(
             "input",
             "pac",
             "total_pv_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1667,7 +1667,7 @@ def _create_consolidated_sensors(
             "load",
             "total_power",
             "total_load_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1675,7 +1675,7 @@ def _create_consolidated_sensors(
             "battery",
             "power",
             "total_battery_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1691,7 +1691,7 @@ def _create_consolidated_sensors(
             "grid",
             "pac",
             "total_grid_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1699,7 +1699,7 @@ def _create_consolidated_sensors(
             "output",
             "pac",
             "total_output_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1707,7 +1707,7 @@ def _create_consolidated_sensors(
             "gen",
             "total_power",
             "total_generator_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
