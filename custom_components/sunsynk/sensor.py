@@ -222,6 +222,48 @@ class SunSynkPlantFlowSensor(SunSynkBaseSensor):
 
 
 # ---------------------------------------------------------------------------
+# Plant info sensor (nameplate / diagnostic)
+# ---------------------------------------------------------------------------
+
+
+class SunSynkPlantInfoSensor(SunSynkBaseSensor):
+    """Sensor for a constant value from the PlantInfo object (e.g. installed capacity)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        plant_id: int,
+        key: str,
+        translation_key: str,
+        unit: str | None,
+        device_class: SensorDeviceClass | None,
+    ) -> None:
+        """Initialise the plant info sensor."""
+        super().__init__(
+            coordinator,
+            f"plant_{plant_id}_info_{key}",
+            translation_key,
+            unit,
+            device_class,
+            state_class=None,
+        )
+        self._plant_id = plant_id
+        self._key = key
+        self._attr_device_info = plant_device_info(coordinator, plant_id)
+
+    def _compute_native_value(self) -> Any | None:
+        """Return the value from the plant info object."""
+        if not self.coordinator.data:
+            return None
+        plant = self.coordinator.data.get("plants", {}).get(self._plant_id)
+        if plant and plant.get("info"):
+            return getattr(plant["info"], self._key, None)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Plant charge sensor
 # ---------------------------------------------------------------------------
 
@@ -329,6 +371,128 @@ class SunSynkInverterSettingsSensor(SunSynkInverterSensor):
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
+
+
+# ---------------------------------------------------------------------------
+# Enum sensor helpers — map numeric status codes to labelled enum states
+# ---------------------------------------------------------------------------
+
+_UNKNOWN_OPTION = "unknown"
+
+
+def _enum_options(code_map: dict[int, str]) -> list[str]:
+    """Build the enum options list for an enum sensor (map values + 'unknown')."""
+    return [*dict.fromkeys(code_map.values()), _UNKNOWN_OPTION]
+
+
+def _map_status_code(raw: Any, code_map: dict[int, str]) -> str | None:
+    """Map a raw status value to the enum label, or 'unknown' if unmapped."""
+    if raw is None:
+        return None
+    try:
+        return code_map.get(int(raw), _UNKNOWN_OPTION)
+    except ValueError, TypeError:
+        return _UNKNOWN_OPTION
+
+
+class SunSynkEnumInverterSensor(SunSynkInverterSensor):
+    """Inverter status sensor that maps numeric codes to enum strings."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        plant_id: int,
+        sn: str,
+        key: str,
+        translation_key: str,
+        source_type: str,
+        code_map: dict[int, str],
+    ) -> None:
+        """Initialise the enum inverter sensor."""
+        super().__init__(
+            coordinator,
+            plant_id,
+            sn,
+            key,
+            translation_key,
+            source_type,
+            unit=None,
+            device_class=SensorDeviceClass.ENUM,
+            state_class=None,
+        )
+        self._code_map = code_map
+        self._attr_options = _enum_options(code_map)
+
+    def _compute_native_value(self) -> str | None:
+        """Return the mapped enum state."""
+        raw = super()._compute_native_value()
+        return _map_status_code(raw, self._code_map)
+
+    def _compute_extra_state_attributes(self) -> dict[str, Any] | None:
+        """Preserve the raw numeric code for automations migrating off ints."""
+        raw = super()._compute_native_value()
+        return {"raw_code": raw} if raw is not None else None
+
+
+class SunSynkEnumGatewaySensor(SunSynkGatewaySensor):
+    """Gateway status sensor that maps numeric codes to enum strings."""
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        gateway: Any,
+        key: str,
+        translation_key: str,
+        code_map: dict[int, str],
+    ) -> None:
+        """Initialise the enum gateway sensor."""
+        super().__init__(
+            coordinator,
+            gateway,
+            key,
+            translation_key,
+            state_class=None,
+            device_class=SensorDeviceClass.ENUM,
+        )
+        self._code_map = code_map
+        self._attr_options = _enum_options(code_map)
+
+    def _compute_native_value(self) -> str | None:
+        """Return the mapped enum state."""
+        raw = super()._compute_native_value()
+        return _map_status_code(raw, self._code_map)
+
+    def _compute_extra_state_attributes(self) -> dict[str, Any] | None:
+        """Preserve the raw numeric code for automations migrating off ints."""
+        raw = super()._compute_native_value()
+        return {"raw_code": raw} if raw is not None else None
+
+
+_BATTERY_STATUS_CODES: dict[int, str] = {
+    0: "standby",
+    1: "charging",
+    2: "discharging",
+}
+
+_GRID_STATUS_CODES: dict[int, str] = {
+    -1: "offline",
+    0: "disconnected",
+    1: "connected",
+}
+
+_SMART_LOAD_STATUS_CODES: dict[int, str] = {
+    -1: "not_configured",
+    0: "off",
+    1: "on",
+}
+
+_GATEWAY_STATUS_CODES: dict[int, str] = {
+    0: "offline",
+    1: "online",
+    2: "online_connected",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -882,7 +1046,7 @@ def _create_gateway_sensors(
     """Create sensor entities for gateways."""
     entities: list[SensorEntity] = []
     for gw in gateways:
-        entities.append(SunSynkGatewaySensor(coordinator, gw, "status", "gateway_status"))
+        entities.append(SunSynkEnumGatewaySensor(coordinator, gw, "status", "gateway_status", _GATEWAY_STATUS_CODES))
         entities.append(
             SunSynkGatewaySensor(
                 coordinator,
@@ -921,6 +1085,23 @@ def _create_plant_flow_sensors(
     return [SunSynkPlantFlowSensor(coordinator, plant_id, key, tkey, unit, dc) for key, tkey, unit, dc in flow_defs]
 
 
+def _create_plant_info_sensors(
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+) -> list[SensorEntity]:
+    """Create diagnostic sensor entities sourced from PlantInfo (nameplate values)."""
+    return [
+        SunSynkPlantInfoSensor(
+            coordinator,
+            plant_id,
+            "total_power",
+            "plant_installed_pv_capacity",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Factory: inverter sensors
 # ---------------------------------------------------------------------------
@@ -941,7 +1122,7 @@ def _create_inverter_sensors(
             "pac",
             "inverter_power_output",
             "info",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
         ),
     ]
@@ -964,7 +1145,6 @@ def _create_inverter_sensors(
                 SensorDeviceClass.VOLTAGE,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("status", "battery_status", None, None, None),
             (
                 "charge_current_limit",
                 "battery_charge_current_limit",
@@ -979,7 +1159,7 @@ def _create_inverter_sensors(
                 SensorDeviceClass.CURRENT,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("correct_cap", "battery_capacity", UnitOfEnergy.KILO_WATT_HOUR, None, None),
+            ("correct_cap", "battery_capacity", "Ah", None, SensorStateClass.MEASUREMENT),
             (
                 "current",
                 "battery_current",
@@ -987,7 +1167,7 @@ def _create_inverter_sensors(
                 SensorDeviceClass.CURRENT,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("power", "battery_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("power", "battery_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "etotal_chg",
                 "battery_total_charge",
@@ -1038,13 +1218,23 @@ def _create_inverter_sensors(
                     sc,
                 )
             )
+        entities.append(
+            SunSynkEnumInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "status",
+                "battery_status",
+                "battery",
+                _BATTERY_STATUS_CODES,
+            )
+        )
 
     # --- Grid sensors ---
     if inv_data.get("grid"):
         grid_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("pac", "grid_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("pac", "grid_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             ("fac", "grid_frequency", UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, SensorStateClass.MEASUREMENT),
-            ("status", "grid_status", None, None, None),
             ("pf", "grid_power_factor", None, SensorDeviceClass.POWER_FACTOR, SensorStateClass.MEASUREMENT),
             (
                 "etotal_from",
@@ -1077,7 +1267,7 @@ def _create_inverter_sensors(
             (
                 "limiter_total_power",
                 "grid_limiter_total_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1096,6 +1286,17 @@ def _create_inverter_sensors(
                     sc,
                 )
             )
+        entities.append(
+            SunSynkEnumInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "status",
+                "grid_status",
+                "grid",
+                _GRID_STATUS_CODES,
+            )
+        )
         # Grid voltage from vip[0]
         entities.append(
             SunSynkVipSensor(
@@ -1114,7 +1315,7 @@ def _create_inverter_sensors(
     # --- Load sensors ---
     if inv_data.get("load"):
         load_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("total_power", "load_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("total_power", "load_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "total_used",
                 "load_total_used",
@@ -1136,11 +1337,10 @@ def _create_inverter_sensors(
                 SensorDeviceClass.FREQUENCY,
                 SensorStateClass.MEASUREMENT,
             ),
-            ("smart_load_status", "smart_load_status", None, None, None),
             (
                 "ups_power_total",
                 "load_ups_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1159,6 +1359,17 @@ def _create_inverter_sensors(
                     sc,
                 )
             )
+        entities.append(
+            SunSynkEnumInverterSensor(
+                coordinator,
+                plant_id,
+                sn,
+                "smart_load_status",
+                "smart_load_status",
+                "load",
+                _SMART_LOAD_STATUS_CODES,
+            )
+        )
         # Load voltage from vip[0]
         entities.append(
             SunSynkVipSensor(
@@ -1177,7 +1388,7 @@ def _create_inverter_sensors(
     # --- Output sensors ---
     if inv_data.get("output"):
         output_defs: list[tuple[str, str, str | None, SensorDeviceClass | None, SensorStateClass | None]] = [
-            ("p_inv", "inverter_power", UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+            ("p_inv", "inverter_power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
             (
                 "fac",
                 "output_frequency",
@@ -1235,7 +1446,7 @@ def _create_inverter_sensors(
             (
                 "total_power",
                 "generator_power",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
                 SensorStateClass.MEASUREMENT,
             ),
@@ -1287,7 +1498,7 @@ def _create_inverter_sensors(
                 "pac",
                 "pv_power",
                 "input",
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
             )
         )
@@ -1464,7 +1675,7 @@ def _compute_current_from_power(
         volt = safe_float(getattr(vip[0], "volt", None))
         if power is None or volt is None or volt == 0:
             return None
-        return round(power * 1000 / volt, 2)
+        return round(power / volt, 2)
 
     return _compute
 
@@ -1612,7 +1823,7 @@ def _create_computed_sensors(
                 "internal_power_usage",
                 "computed_internal_power_usage",
                 _compute_internal_power,
-                UnitOfPower.KILO_WATT,
+                UnitOfPower.WATT,
                 SensorDeviceClass.POWER,
             )
         )
@@ -1659,7 +1870,7 @@ def _create_consolidated_sensors(
             "input",
             "pac",
             "total_pv_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1667,7 +1878,7 @@ def _create_consolidated_sensors(
             "load",
             "total_power",
             "total_load_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1675,7 +1886,7 @@ def _create_consolidated_sensors(
             "battery",
             "power",
             "total_battery_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1691,7 +1902,7 @@ def _create_consolidated_sensors(
             "grid",
             "pac",
             "total_grid_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1699,7 +1910,7 @@ def _create_consolidated_sensors(
             "output",
             "pac",
             "total_output_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1707,7 +1918,7 @@ def _create_consolidated_sensors(
             "gen",
             "total_power",
             "total_generator_power",
-            UnitOfPower.KILO_WATT,
+            UnitOfPower.WATT,
             SensorDeviceClass.POWER,
             SensorStateClass.MEASUREMENT,
         ),
@@ -1776,6 +1987,9 @@ async def async_setup_entry(
     for plant_id, plant_data in coordinator.data.get("plants", {}).items():
         if plant_data.get("flow"):
             entities.extend(_create_plant_flow_sensors(coordinator, plant_id))
+
+        if plant_data.get("info"):
+            entities.extend(_create_plant_info_sensors(coordinator, plant_id))
 
         # Plant charge sensors
         charges = get_plant_charges(coordinator, plant_id)
