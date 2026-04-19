@@ -13,20 +13,19 @@ reporter believes it should be `A` (amp-hours).
 
 ## Live verification
 
-Probed the reporter's own instance (HA at `<ha-lan-ip>`, inverter
-`EXAMPLE_SN`) at the same instant on 2026-04-19:
+Probed the reporter's own instance at the same instant on 2026-04-19:
 
 | Entity | State | Unit | Comment |
 |---|---|---|---|
 | `sensor.sunsynk_<plant>_pv_power` (plant) | 521 | `W` | **Correct** |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_pv_power` | 521 | `kW` | **Wrong** — same raw value, labelled kW |
+| `sensor.sunsynk_inverter_<sn>_pv_power` | 521 | `kW` | **Wrong** — same raw value, labelled kW |
 | `sensor.sunsynk_<plant>_grid_power` (plant) | 52 | `W` | Correct |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_grid_power` | 52 | `kW` | Wrong |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_grid_current` | 222.89 | `A` | Wrong — 52 W ÷ 233 V ≈ 0.22 A, not 223 A |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_load_current` | 4.27 | `A` | Wrong |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_internal_power_usage` | 126 | `kW` | Wrong |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_grid_limiter_total_power` | -1136 | `kW` | Wrong |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_battery_capacity` | 100 | `kWh` | Wrong — raw 100 is ampere-hours (battery rated 100 Ah ≈ 5.12 kWh at 51.2 V) |
+| `sensor.sunsynk_inverter_<sn>_grid_power` | 52 | `kW` | Wrong |
+| `sensor.sunsynk_inverter_<sn>_grid_current` | 222.89 | `A` | Wrong — 52 W ÷ 233 V ≈ 0.22 A, not 223 A |
+| `sensor.sunsynk_inverter_<sn>_load_current` | 4.27 | `A` | Wrong |
+| `sensor.sunsynk_inverter_<sn>_internal_power_usage` | 126 | `kW` | Wrong |
+| `sensor.sunsynk_inverter_<sn>_grid_limiter_total_power` | -1136 | `kW` | Wrong |
+| `sensor.sunsynk_inverter_<sn>_battery_capacity` | 100 | `kWh` | Wrong — raw 100 is ampere-hours (battery rated 100 Ah ≈ 5.12 kWh at 51.2 V) |
 
 The plant row uses `UnitOfPower.WATT` and shows sensible values. The inverter
 row uses `UnitOfPower.KILO_WATT` on the same underlying watts value — hence
