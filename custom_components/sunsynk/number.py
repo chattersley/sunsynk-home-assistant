@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.httpx_client import get_async_client
@@ -190,6 +190,15 @@ class SunSynkExtraNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
         await self.coordinator.async_request_refresh()
 
 
+class SunSynkZeroExportPowerNumber(SunSynkExtraNumber):
+    """Number entity for the Grid Trickle Feed / Zero Export Power setting (watts)."""
+
+    _attr_native_step = 10
+    _attr_mode = NumberMode.BOX
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+    _attr_device_class = NumberDeviceClass.POWER
+
+
 class SunSynkChargePriceNumber(CoordinatorEntity, NumberEntity):  # type: ignore[misc]
     """Number entity for a plant electricity charge price."""
 
@@ -314,5 +323,21 @@ async def async_setup_entry(
                         region_idx,
                     )
                 )
+
+            # Grid Trickle Feed (Zero Export Power) — watts, BOX entry, 10 W steps
+            entities.append(
+                SunSynkZeroExportPowerNumber(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    "zeroExportPower",
+                    "zero_export_power",
+                    "zero_export_power",
+                    0,
+                    500,
+                    token_manager,
+                    region_idx,
+                )
+            )
 
     async_add_entities(entities)
