@@ -75,7 +75,15 @@
   },
   "entity": {
     "sensor": {
-      "gateway_status": { "name": "Status" },
+      "gateway_status": {
+        "name": "Status",
+        "state": {
+          "offline": "Offline",
+          "online": "Online",
+          "online_connected": "Online (connected)",
+          "unknown": "Unknown"
+        }
+      },
       "gateway_signal": { "name": "Signal strength" },
       "info_events": { "name": "Info events" },
       "warning_events": { "name": "Warning events" },
@@ -93,11 +101,20 @@
       "plant_smart_load_power": { "name": "Smart load power" },
       "plant_home_load_power": { "name": "Home load power" },
       "plant_ups_load_power": { "name": "UPS load power" },
+      "plant_installed_pv_capacity": { "name": "Installed PV capacity" },
       "inverter_power_output": { "name": "Power output" },
       "battery_soc": { "name": "Battery SOC" },
       "battery_voltage": { "name": "Battery voltage" },
       "battery_charge_voltage": { "name": "Battery charge voltage" },
-      "battery_status": { "name": "Battery status" },
+      "battery_status": {
+        "name": "Battery status",
+        "state": {
+          "standby": "Standby",
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "unknown": "Unknown"
+        }
+      },
       "battery_charge_current_limit": { "name": "Battery charge current limit" },
       "battery_discharge_current_limit": { "name": "Battery discharge current limit" },
       "battery_capacity": { "name": "Battery capacity" },
@@ -110,7 +127,15 @@
       "battery_temperature": { "name": "Battery temperature" },
       "grid_power": { "name": "Grid power" },
       "grid_frequency": { "name": "Grid frequency" },
-      "grid_status": { "name": "Grid status" },
+      "grid_status": {
+        "name": "Grid status",
+        "state": {
+          "offline": "Offline",
+          "disconnected": "Disconnected",
+          "connected": "Connected",
+          "unknown": "Unknown"
+        }
+      },
       "grid_power_factor": { "name": "Grid power factor" },
       "grid_total_import": { "name": "Grid total import" },
       "grid_total_export": { "name": "Grid total export" },
@@ -122,7 +147,15 @@
       "load_total_used": { "name": "Load total used" },
       "load_daily_used": { "name": "Load daily used" },
       "load_frequency": { "name": "Load frequency" },
-      "smart_load_status": { "name": "Smart load status" },
+      "smart_load_status": {
+        "name": "Smart load status",
+        "state": {
+          "not_configured": "Not configured",
+          "off": "Off",
+          "on": "On",
+          "unknown": "Unknown"
+        }
+      },
       "load_ups_power": { "name": "Load UPS power" },
       "load_voltage": { "name": "Load voltage" },
       "inverter_power": { "name": "Inverter power" },
@@ -201,7 +234,8 @@
       "cap_soc_floor_6": { "name": "SOC floor 6" },
       "battery_restart_cap": { "name": "Battery restart cap" },
       "battery_shutdown_cap": { "name": "Battery shutdown cap" },
-      "battery_max_charge_current": { "name": "Battery max charge current" }
+      "battery_max_charge_current": { "name": "Battery max charge current" },
+      "zero_export_power": { "name": "Zero export power" }
     },
     "select": {
       "sell_time_1": { "name": "Sell time 1" },
@@ -210,7 +244,15 @@
       "sell_time_4": { "name": "Sell time 4" },
       "sell_time_5": { "name": "Sell time 5" },
       "sell_time_6": { "name": "Sell time 6" },
-      "sys_work_mode": { "name": "System work mode" }
+      "sys_work_mode": {
+        "name": "System work mode",
+        "state": {
+          "0": "Selling first",
+          "1": "Zero export to load",
+          "2": "Zero export to CT",
+          "3": "Self-use"
+        }
+      }
     },
     "switch": {
       "timer_1_on": { "name": "Timer 1" },
