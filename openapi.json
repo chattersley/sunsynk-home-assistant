@@ -1005,7 +1005,7 @@
                 "full": {
                   "summary": "Full settings request",
                   "value": {
-                    "sn": "2210085392",
+                    "sn": "EXAMPLE_SN",
                     "safetyType": "0",
                     "battMode": "-1",
                     "solarSell": "1",
