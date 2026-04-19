@@ -222,6 +222,48 @@ class SunSynkPlantFlowSensor(SunSynkBaseSensor):
 
 
 # ---------------------------------------------------------------------------
+# Plant info sensor (nameplate / diagnostic)
+# ---------------------------------------------------------------------------
+
+
+class SunSynkPlantInfoSensor(SunSynkBaseSensor):
+    """Sensor for a constant value from the PlantInfo object (e.g. installed capacity)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: SunSynkCoordinator,
+        plant_id: int,
+        key: str,
+        translation_key: str,
+        unit: str | None,
+        device_class: SensorDeviceClass | None,
+    ) -> None:
+        """Initialise the plant info sensor."""
+        super().__init__(
+            coordinator,
+            f"plant_{plant_id}_info_{key}",
+            translation_key,
+            unit,
+            device_class,
+            state_class=None,
+        )
+        self._plant_id = plant_id
+        self._key = key
+        self._attr_device_info = plant_device_info(coordinator, plant_id)
+
+    def _compute_native_value(self) -> Any | None:
+        """Return the value from the plant info object."""
+        if not self.coordinator.data:
+            return None
+        plant = self.coordinator.data.get("plants", {}).get(self._plant_id)
+        if plant and plant.get("info"):
+            return getattr(plant["info"], self._key, None)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Plant charge sensor
 # ---------------------------------------------------------------------------
 
@@ -919,6 +961,23 @@ def _create_plant_flow_sensors(
         ("ups_load_power", "plant_ups_load_power", UnitOfPower.WATT, SensorDeviceClass.POWER),
     ]
     return [SunSynkPlantFlowSensor(coordinator, plant_id, key, tkey, unit, dc) for key, tkey, unit, dc in flow_defs]
+
+
+def _create_plant_info_sensors(
+    coordinator: SunSynkCoordinator,
+    plant_id: int,
+) -> list[SensorEntity]:
+    """Create diagnostic sensor entities sourced from PlantInfo (nameplate values)."""
+    return [
+        SunSynkPlantInfoSensor(
+            coordinator,
+            plant_id,
+            "total_power",
+            "plant_installed_pv_capacity",
+            UnitOfPower.KILO_WATT,
+            SensorDeviceClass.POWER,
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -1776,6 +1835,9 @@ async def async_setup_entry(
     for plant_id, plant_data in coordinator.data.get("plants", {}).items():
         if plant_data.get("flow"):
             entities.extend(_create_plant_flow_sensors(coordinator, plant_id))
+
+        if plant_data.get("info"):
+            entities.extend(_create_plant_info_sensors(coordinator, plant_id))
 
         # Plant charge sensors
         charges = get_plant_charges(coordinator, plant_id)
