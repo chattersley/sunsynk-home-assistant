@@ -1,9 +1,9 @@
 # Issue analysis — GitHub issues #1–#4
 
 One doc per open issue. Each walks the reported problem, verifies against
-the reporter's live Home Assistant instance (`<ha-lan-ip>`, inverter
-`EXAMPLE_SN`), challenges the suggested direction where relevant, and
-sketches an implementation plan for review before coding starts.
+the reporter's live Home Assistant instance, challenges the suggested
+direction where relevant, and sketches an implementation plan for review
+before coding starts.
 
 | # | Issue | Verdict |
 |---|---|---|

@@ -24,11 +24,11 @@ Current state on the reporter's instance:
 
 | Entity | Value | Unit | Notes |
 |---|---|---|---|
-| `sensor.sunsynk_gateway_<gateway-sn>_status` | `2` | — | Gateway status |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_battery_status` | `2` | — | |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_grid_status` | `-1` | — | |
-| `sensor.sunsynk_inverter_EXAMPLE_SN_smart_load_status` | `-1` | — | |
-| `select.sunsynk_inverter_EXAMPLE_SN_system_work_mode` | `0` | options `["0","1","2","3"]` | Already writable, but labels are raw numbers |
+| `sensor.sunsynk_gateway_<sn>_status` | `2` | — | Gateway status |
+| `sensor.sunsynk_inverter_<sn>_battery_status` | `2` | — | |
+| `sensor.sunsynk_inverter_<sn>_grid_status` | `-1` | — | |
+| `sensor.sunsynk_inverter_<sn>_smart_load_status` | `-1` | — | |
+| `select.sunsynk_inverter_<sn>_system_work_mode` | `0` | options `["0","1","2","3"]` | Already writable, but labels are raw numbers |
 
 So "System Work Mode" already has a select entity (that's the "writable"
 side of the reporter's ask) — we just need to relabel its options. The
