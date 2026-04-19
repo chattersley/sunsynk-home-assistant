@@ -1,0 +1,2976 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SunSynk Power View API",
+    "description": "API specification for SunSynk Power View (Inverter monitoring system). Combined from Node-RED flows and Python client library.",
+    "version": "1.2.0",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://pv.inteless.com",
+      "description": "Region 1 - Production server"
+    },
+    {
+      "url": "https://api.sunsynk.net",
+      "description": "Region 2 - Alternative server"
+    },
+    {
+      "url": "{base_url}",
+      "description": "Custom server",
+      "variables": {
+        "base_url": {
+          "default": "https://pv.inteless.com",
+          "description": "Base URL for the Sunsynk API"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/oauth/token": {
+      "post": {
+        "summary": "Authenticate user and obtain access token",
+        "description": "OAuth2 token endpoint for user authentication. For new authentication flow, use /oauth/token/new with RSA encrypted password.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/token/new": {
+      "post": {
+        "summary": "Authenticate and get bearer token (new flow)",
+        "description": "Authenticates user with credentials and returns a bearer token. Requires RSA encryption of password with public key from /anonymous/publicKey.",
+        "operationId": "getBearerToken",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password", "grant_type", "client_id"],
+                "properties": {
+                  "areaCode": {
+                    "type": "string",
+                    "default": "sunsynk"
+                  },
+                  "client_id": {
+                    "type": "string",
+                    "default": "csp-web"
+                  },
+                  "grant_type": {
+                    "type": "string",
+                    "default": "password"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "RSA encrypted password (Base64 encoded)"
+                  },
+                  "source": {
+                    "type": "string",
+                    "default": "sunsynk"
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "User's username"
+                  },
+                  "nonce": {
+                    "type": "integer",
+                    "description": "Unix timestamp for request"
+                  },
+                  "sign": {
+                    "type": "string",
+                    "description": "MD5 hash of nonce + source + public key snippet"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "msg": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "access_token": {
+                          "type": "string"
+                        },
+                        "expires_in": {
+                          "type": "integer"
+                        },
+                        "token_type": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anonymous/publicKey": {
+      "get": {
+        "summary": "Get public key for password encryption",
+        "description": "Retrieves the RSA public key used to encrypt the password before login",
+        "operationId": "getPublicKey",
+        "tags": ["Authentication"],
+        "parameters": [
+          {
+            "name": "nonce",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Unix timestamp"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "sunsynk"
+            }
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "MD5 hash of nonce + source + source value"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public key retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "description": "Base64 encoded RSA public key"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plants": {
+      "get": {
+        "summary": "Get list of plants",
+        "description": "Retrieves a list of all plants associated with the account",
+        "operationId": "getPlants",
+        "tags": ["Plants"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of plants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inverters": {
+      "get": {
+        "summary": "Get list of inverters",
+        "description": "Retrieve all inverters associated with the user account",
+        "tags": ["Inverters"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "total",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": -1
+            }
+          },
+          {
+            "name": "sn",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "plantId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": -2
+            }
+          },
+          {
+            "name": "softVer",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "hmiVer",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "agentCompanyId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": -1
+            }
+          },
+          {
+            "name": "gsn",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvertersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/plant/energy/{plantId}/flow": {
+      "get": {
+        "summary": "Get plant energy flow data",
+        "description": "Retrieves real-time energy flow data for a specific plant",
+        "operationId": "getPlantFlow",
+        "tags": ["Plants"],
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant flow data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantFlowResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plant/{plantId}": {
+      "get": {
+        "summary": "Get plant information",
+        "description": "Retrieves detailed information for a specific plant, including pricing charges, location, owner, currency, timezone, realtime energy data, and permissions.",
+        "operationId": "getPlant",
+        "tags": ["Plants"],
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Plant ID"
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "en",
+              "description": "Language code"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Plant ID (repeated as query parameter)"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantInfoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plant/{plantId}/inverters": {
+      "get": {
+        "summary": "Get inverters for a plant",
+        "description": "Retrieves list of inverters associated with a specific plant",
+        "operationId": "getPlantInverters",
+        "tags": ["Inverters"],
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": "1"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": "-1"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "-2"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of inverters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantInvertersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plant/{plantId}/income": {
+      "post": {
+        "summary": "Set plant income pricing",
+        "description": "Configures the electricity pricing model for a plant. Supports three pricing types: Constant Price (type 1), Time of Use (type 2), and Live Price (type 3, UK only). Time of Use allows a maximum of 6 time slots and must have one entry starting at 00:00 and one ending at 24:00.",
+        "operationId": "setPlantIncome",
+        "tags": ["Plants"],
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Plant ID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlantIncomeRequest"
+              },
+              "examples": {
+                "constantPrice": {
+                  "summary": "Constant Price (type 1) — single flat rate",
+                  "value": {
+                    "id": "345964",
+                    "currency": 366,
+                    "invest": 10730.12,
+                    "charges": [
+                      {"price": "27", "type": "1", "startRange": "00:00", "endRange": "24:00"}
+                    ]
+                  }
+                },
+                "timeOfUse": {
+                  "summary": "Time of Use (type 2) — up to 6 time slots",
+                  "value": {
+                    "id": "345964",
+                    "currency": 366,
+                    "invest": 10730.12,
+                    "charges": [
+                      {"startRange": "00:00", "endRange": "03:30", "price": "83", "type": 2},
+                      {"startRange": "03:30", "endRange": "05:00", "price": "100", "type": 2},
+                      {"startRange": "05:00", "endRange": "07:30", "price": "20", "type": 2},
+                      {"startRange": "07:30", "endRange": "13:00", "price": "20", "type": 2},
+                      {"startRange": "13:00", "endRange": "16:30", "price": "100", "type": 2},
+                      {"startRange": "16:30", "endRange": "24:00", "price": "20", "type": 2}
+                    ]
+                  }
+                },
+                "livePrice": {
+                  "summary": "Live Price (type 3) — UK only, uses external provider rates",
+                  "value": {
+                    "id": "345964",
+                    "currency": 366,
+                    "invest": 10730.12,
+                    "charges": [
+                      {"price": 0, "type": "3", "startRange": "", "endRange": ""}
+                    ],
+                    "products": [
+                      {"direction": 1, "ratesThreshold": "25", "provider": 1, "limitSoc": null, "regionId": 8},
+                      {"direction": 0, "ratesThreshold": 30, "provider": 1, "limitSoc": 20, "regionId": 8}
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Income pricing updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "msg": { "type": "string" },
+                    "code": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/{sn}/realtime/input": {
+      "get": {
+        "summary": "Get inverter input data",
+        "description": "Retrieves real-time input data (PV) for a specific inverter",
+        "operationId": "getInverterInput",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inverter input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/{sn}/realtime/output": {
+      "get": {
+        "summary": "Get inverter output data",
+        "description": "Retrieves real-time output data for a specific inverter",
+        "operationId": "getInverterOutput",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inverter output data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/battery/{sn}/realtime": {
+      "get": {
+        "summary": "Get battery realtime data",
+        "description": "Retrieves real-time battery information for a specific inverter",
+        "operationId": "getBatteryRealtime",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": -1
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Battery realtime data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatteryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/grid/{sn}/realtime": {
+      "get": {
+        "summary": "Get grid realtime data",
+        "description": "Retrieves real-time grid information for a specific inverter",
+        "operationId": "getGridRealtime",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grid realtime data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/load/{sn}/realtime": {
+      "get": {
+        "summary": "Get load realtime data",
+        "description": "Retrieves real-time load information for a specific inverter",
+        "operationId": "getLoadRealtime",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Load realtime data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadRealtimeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/gen/{sn}/realtime": {
+      "get": {
+        "summary": "Get generation realtime data",
+        "description": "Retrieves real-time solar generation information for a specific inverter",
+        "operationId": "getGenRealtime",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generation realtime data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenRealtimeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inverter/{sn}/output/day": {
+      "get": {
+        "summary": "Get inverter daily output",
+        "description": "Retrieves daily output statistics for a specific inverter",
+        "operationId": "getInverterDailyOutput",
+        "tags": ["Inverter Data"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Date in YYYY-MM-DD format"
+            }
+          },
+          {
+            "name": "column",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated column names (e.g., dc_temp,igbt_temp)",
+              "default": "dc_temp,igbt_temp"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily output data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyOutputResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/common/setting/{sn}/read": {
+      "get": {
+        "summary": "Read inverter settings",
+        "description": "Retrieves the configuration settings for a specific inverter",
+        "operationId": "readInverterSettings",
+        "tags": ["Settings"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inverter settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InverterSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/common/setting/{sn}/set": {
+      "post": {
+        "summary": "Set inverter settings",
+        "description": "Updates the configuration settings for a specific inverter. Accepts partial requests — only the fields included in the request body will be updated, all other settings remain unchanged.",
+        "operationId": "setInverterSettings",
+        "tags": ["Settings"],
+        "parameters": [
+          {
+            "name": "sn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inverter serial number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InverterSettingsSet"
+              },
+              "examples": {
+                "full": {
+                  "summary": "Full settings request",
+                  "value": {
+                    "sn": "2210085392",
+                    "safetyType": "0",
+                    "battMode": "-1",
+                    "solarSell": "1",
+                    "pvMaxLimit": "5000",
+                    "energyMode": "1",
+                    "peakAndVallery": "1",
+                    "sysWorkMode": "2",
+                    "sellTime1": "08:00",
+                    "sellTime2": "08:30",
+                    "sellTime3": "05:00",
+                    "sellTime4": "10:00",
+                    "sellTime5": "12:30",
+                    "sellTime6": "16:00",
+                    "sellTime1Pac": "5000",
+                    "sellTime2Pac": "5000",
+                    "sellTime3Pac": "5000",
+                    "sellTime4Pac": "5000",
+                    "sellTime5Pac": "5000",
+                    "sellTime6Pac": "5000",
+                    "cap1": "20",
+                    "cap2": "20",
+                    "cap3": "20",
+                    "cap4": "40",
+                    "cap5": "100",
+                    "cap6": "20",
+                    "sellTime1Volt": "41",
+                    "sellTime2Volt": "41",
+                    "sellTime3Volt": "49",
+                    "sellTime4Volt": "49",
+                    "sellTime5Volt": "49",
+                    "sellTime6Volt": "49",
+                    "zeroExportPower": "20",
+                    "solarMaxSellPower": "6500",
+                    "gridPeakShaving": "0",
+                    "generatorStartCap": "10",
+                    "batteryLowCap": "35",
+                    "mondayOn": true,
+                    "tuesdayOn": true,
+                    "wednesdayOn": true,
+                    "thursdayOn": true,
+                    "fridayOn": true,
+                    "saturdayOn": true,
+                    "sundayOn": true,
+                    "time1on": false,
+                    "time2on": false,
+                    "time3on": false,
+                    "time4on": true,
+                    "time5on": true,
+                    "time6on": false,
+                    "genTime1on": false,
+                    "genTime2on": false,
+                    "genTime3on": false,
+                    "genTime4on": false,
+                    "genTime5on": false,
+                    "genTime6on": false
+                  }
+                },
+                "minimal": {
+                  "summary": "Partial settings request (only time slots and capacities)",
+                  "value": {
+                    "sellTime1": "08:30",
+                    "sellTime2": "09:30",
+                    "sellTime3": "05:00",
+                    "sellTime4": "10:00",
+                    "sellTime5": "12:30",
+                    "sellTime6": "16:00",
+                    "cap1": "20",
+                    "cap2": "20",
+                    "cap3": "20",
+                    "cap4": "40",
+                    "cap5": "100",
+                    "cap6": "20",
+                    "time1on": true,
+                    "time2on": false,
+                    "time3on": true,
+                    "time4on": false,
+                    "time5on": true,
+                    "time6on": false,
+                    "genTime1on": false,
+                    "genTime2on": false,
+                    "genTime3on": false,
+                    "genTime4on": false,
+                    "genTime5on": false,
+                    "genTime6on": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "msg": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gateways": {
+      "get": {
+        "summary": "Get gateways",
+        "description": "Retrieves list of gateways associated with the account",
+        "operationId": "getGateways",
+        "tags": ["Gateways"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": "-1"
+            }
+          },
+          {
+            "name": "sn",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "plantId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "uploadCycle",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "-1"
+            }
+          },
+          {
+            "name": "softVer",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hardVer",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invSn",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "protocol",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "-1"
+            }
+          },
+          {
+            "name": "agentCompanyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "-1"
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of gateways",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewaysResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "summary": "Get events",
+        "description": "Retrieves system events (warnings, alarms, etc.)",
+        "operationId": "getEvents",
+        "tags": ["Events"],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Event type (1=Info, 2=Warning, 3=Alarm)"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          },
+          {
+            "name": "sdate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Start date (YYYY-MM-DD)"
+            }
+          },
+          {
+            "name": "edate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "End date (YYYY-MM-DD)"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/messages": {
+      "get": {
+        "summary": "Get notifications/messages",
+        "description": "Retrieves system notifications and messages",
+        "operationId": "getMessages",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": -1
+            }
+          },
+          {
+            "name": "lan",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Bearer token obtained from /oauth/token or /oauth/token/new endpoint"
+      }
+    },
+    "schemas": {
+      "TokenRequest": {
+        "type": "object",
+        "required": ["username", "password", "grant_type", "client_id"],
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "User's username"
+          },
+          "password": {
+            "type": "string",
+            "description": "User's password",
+            "format": "password"
+          },
+          "grant_type": {
+            "type": "string",
+            "enum": ["password"]
+          },
+          "client_id": {
+            "type": "string",
+            "enum": ["csp-web"]
+          }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "access_token": {
+                "type": "string"
+              },
+              "refresh_token": {
+                "type": "string"
+              },
+              "expires_in": {
+                "type": "integer"
+              },
+              "token_type": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Plant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Plant ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Plant name"
+          },
+          "thumbUrl": {
+            "type": "string",
+            "description": "Thumbnail URL"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Plant status"
+          },
+          "address": {
+            "type": "string",
+            "description": "Plant address"
+          },
+          "pac": {
+            "type": "number",
+            "description": "Current power (W)"
+          },
+          "efficiency": {
+            "type": "number",
+            "description": "Efficiency percentage"
+          },
+          "etoday": {
+            "type": "number",
+            "description": "Energy generated today (kWh)"
+          },
+          "etotal": {
+            "type": "number",
+            "description": "Total energy generated (kWh)"
+          },
+          "updateAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          },
+          "createAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "type": {
+            "type": "number",
+            "description": "Plant type"
+          },
+          "masterId": {
+            "type": "integer",
+            "description": "Master ID"
+          },
+          "share": {
+            "type": "boolean",
+            "description": "Share settings"
+          },
+          "plantPermission": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "existCamera": {
+            "type": "boolean",
+            "description": "Whether camera exists"
+          }
+        }
+      },
+      "PlantsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "infos": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Plant"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InverterVersion": {
+        "type": "object",
+        "properties": {
+          "masterVer": {
+            "type": "string"
+          },
+          "softVer": {
+            "type": "string"
+          },
+          "hardVer": {
+            "type": "string"
+          },
+          "hmiVer": {
+            "type": "string"
+          },
+          "bmsVer": {
+            "type": "string"
+          }
+        }
+      },
+      "PlantSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer"
+          },
+          "master": {
+            "type": "string"
+          },
+          "installer": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
+      "GatewayInfo": {
+        "type": "object",
+        "properties": {
+          "gsn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          }
+        }
+      },
+      "Inverter": {
+        "type": "object",
+        "properties": {
+          "sn": {
+            "type": "string",
+            "description": "Serial number"
+          },
+          "alias": {
+            "type": "string",
+            "description": "Inverter alias"
+          },
+          "gsn": {
+            "type": "string",
+            "description": "Gateway serial number"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Inverter status"
+          },
+          "type": {
+            "type": "string",
+            "description": "Inverter type"
+          },
+          "commTypeName": {
+            "type": "string",
+            "description": "Communication type name"
+          },
+          "custCode": {
+            "type": "string",
+            "description": "Customer code"
+          },
+          "version": {
+            "$ref": "#/components/schemas/InverterVersion"
+          },
+          "model": {
+            "type": "string",
+            "description": "Inverter model"
+          },
+          "equipMode": {
+            "type": "integer",
+            "description": "Equipment mode"
+          },
+          "pac": {
+            "type": "number",
+            "description": "Current power (AC)"
+          },
+          "etoday": {
+            "type": "number",
+            "description": "Energy generated today"
+          },
+          "etotal": {
+            "type": "number",
+            "description": "Total energy generated"
+          },
+          "updateAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          },
+          "opened": {
+            "type": "boolean",
+            "description": "Whether inverter is opened"
+          },
+          "plant": {
+            "$ref": "#/components/schemas/PlantSummary"
+          },
+          "gateway": {
+            "$ref": "#/components/schemas/GatewayInfo"
+          },
+          "sunsynkEquip": {
+            "type": "string"
+          },
+          "protocolIdentifier": {
+            "type": "string"
+          }
+        }
+      },
+      "InvertersResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "infos": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Inverter"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Vip": {
+        "type": "object",
+        "properties": {
+          "volt": {
+            "type": "string",
+            "description": "Voltage (V) — returned as a stringified number by the API (e.g. \"236.6\")"
+          },
+          "current": {
+            "type": "string",
+            "description": "Current (A) — returned as a stringified number by the API (e.g. \"0.9\")"
+          },
+          "power": {
+            "type": "number",
+            "format": "float",
+            "description": "Power (W)"
+          }
+        }
+      },
+      "PvIv": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "pvNo": {
+            "type": "integer",
+            "description": "PV string number"
+          },
+          "vpv": {
+            "type": "number",
+            "description": "PV voltage (V)"
+          },
+          "ipv": {
+            "type": "number",
+            "description": "PV current (A)"
+          },
+          "ppv": {
+            "type": "number",
+            "description": "PV power (W)"
+          },
+          "todayPv": {
+            "type": "number",
+            "description": "Today's PV energy (kWh)"
+          },
+          "sn": {
+            "type": "string",
+            "description": "Serial number"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record timestamp"
+          }
+        }
+      },
+      "InputData": {
+        "type": "object",
+        "properties": {
+          "etoday": {
+            "type": "number",
+            "description": "Energy generated today (kWh)"
+          },
+          "etotal": {
+            "type": "number",
+            "description": "Total energy generated (kWh)"
+          },
+          "pac": {
+            "type": "number",
+            "description": "Current power (W)"
+          },
+          "pvIV": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PvIv"
+            }
+          }
+        }
+      },
+      "InputResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/InputData"
+          }
+        }
+      },
+      "OutputData": {
+        "type": "object",
+        "properties": {
+          "vip": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vip"
+            }
+          },
+          "pInv": {
+            "type": "number",
+            "description": "Inverter power (W)"
+          },
+          "pac": {
+            "type": "number",
+            "description": "Output power (W)"
+          },
+          "fac": {
+            "type": "number",
+            "description": "Frequency (Hz)"
+          }
+        }
+      },
+      "OutputResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/OutputData"
+          }
+        }
+      },
+      "GridData": {
+        "type": "object",
+        "properties": {
+          "vip": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vip"
+            }
+          },
+          "pac": {
+            "type": "number",
+            "description": "Grid power (W)"
+          },
+          "qac": {
+            "type": "number",
+            "description": "Reactive power (kVar)"
+          },
+          "fac": {
+            "type": "number",
+            "description": "Grid frequency (Hz)"
+          },
+          "pf": {
+            "type": "number",
+            "description": "Power factor"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Grid status"
+          },
+          "etodayFrom": {
+            "type": "number",
+            "description": "Energy imported today (kWh)"
+          },
+          "etodayTo": {
+            "type": "number",
+            "description": "Energy exported today (kWh)"
+          },
+          "etotalFrom": {
+            "type": "number",
+            "description": "Total energy imported (kWh)"
+          },
+          "etotalTo": {
+            "type": "number",
+            "description": "Total energy exported (kWh)"
+          },
+          "limiterPowerArr": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "limiterTotalPower": {
+            "type": "number",
+            "description": "Total limiter power (W)"
+          }
+        }
+      },
+      "GridResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/GridData"
+          }
+        }
+      },
+      "BatteryData": {
+        "type": "object",
+        "properties": {
+          "etodayChg": {
+            "type": "number",
+            "description": "Battery charge energy today (kWh)"
+          },
+          "etodayDischg": {
+            "type": "number",
+            "description": "Battery discharge energy today (kWh)"
+          },
+          "emonthChg": {
+            "type": "number",
+            "description": "Battery charge energy this month (kWh)"
+          },
+          "emonthDischg": {
+            "type": "number",
+            "description": "Battery discharge energy this month (kWh)"
+          },
+          "eyearChg": {
+            "type": "number",
+            "description": "Battery charge energy this year (kWh)"
+          },
+          "eyearDischg": {
+            "type": "number",
+            "description": "Battery discharge energy this year (kWh)"
+          },
+          "etotalChg": {
+            "type": "number",
+            "description": "Total battery charge energy (kWh)"
+          },
+          "etotalDischg": {
+            "type": "number",
+            "description": "Total battery discharge energy (kWh)"
+          },
+          "type": {
+            "type": "number",
+            "description": "Battery type"
+          },
+          "power": {
+            "type": "number",
+            "description": "Battery power (W)"
+          },
+          "capacity": {
+            "type": "number",
+            "description": "Battery capacity (Ah)"
+          },
+          "correctCap": {
+            "type": "number",
+            "description": "Corrected capacity (Ah)"
+          },
+          "current": {
+            "type": "number",
+            "description": "Battery current (A)"
+          },
+          "voltage": {
+            "type": "number",
+            "description": "Battery voltage (V)"
+          },
+          "temp": {
+            "type": "number",
+            "description": "Battery temperature (°C)"
+          },
+          "soc": {
+            "type": "number",
+            "description": "State of charge (%)"
+          },
+          "chargeVolt": {
+            "type": "number",
+            "description": "Charge voltage (V)"
+          },
+          "dischargeVolt": {
+            "type": "number",
+            "description": "Discharge voltage (V)"
+          },
+          "chargeCurrentLimit": {
+            "type": "number",
+            "description": "Charge current limit (A)"
+          },
+          "dischargeCurrentLimit": {
+            "type": "number",
+            "description": "Discharge current limit (A)"
+          },
+          "maxChargeCurrentLimit": {
+            "type": "number",
+            "description": "Maximum charge current limit (A)"
+          },
+          "maxDischargeCurrentLimit": {
+            "type": "number",
+            "description": "Maximum discharge current limit (A)"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Battery status"
+          },
+          "batterySoc1": {
+            "type": "number",
+            "description": "Battery 1 state of charge (%)"
+          },
+          "batteryCurrent1": {
+            "type": "number",
+            "description": "Battery 1 current (A)"
+          },
+          "batteryVolt1": {
+            "type": "number",
+            "description": "Battery 1 voltage (V)"
+          },
+          "batteryPower1": {
+            "type": "number",
+            "description": "Battery 1 power (W)"
+          },
+          "batteryTemp1": {
+            "type": "number",
+            "description": "Battery 1 temperature (°C)"
+          },
+          "batteryStatus2": {
+            "type": "number",
+            "description": "Battery 2 status"
+          },
+          "batterySoc2": {
+            "type": "number",
+            "description": "Battery 2 state of charge (%)"
+          },
+          "batteryCurrent2": {
+            "type": "number",
+            "description": "Battery 2 current (A)"
+          },
+          "batteryVolt2": {
+            "type": "number",
+            "description": "Battery 2 voltage (V)"
+          },
+          "batteryPower2": {
+            "type": "number",
+            "description": "Battery 2 power (W)"
+          },
+          "batteryTemp2": {
+            "type": "number",
+            "description": "Battery 2 temperature (°C)"
+          },
+          "numberOfBatteries": {
+            "type": "integer",
+            "description": "Number of batteries"
+          },
+          "batt1Factory": {
+            "type": "string",
+            "description": "Battery 1 factory"
+          },
+          "batt2Factory": {
+            "type": "string",
+            "description": "Battery 2 factory"
+          }
+        }
+      },
+      "BatteryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/BatteryData"
+          }
+        }
+      },
+      "RealtimeVip": {
+        "type": "object",
+        "properties": {
+          "volt": { "type": "string" },
+          "current": { "type": "string" },
+          "power": { "type": "number" }
+        }
+      },
+      "PlantFlowData": {
+        "type": "object",
+        "properties": {
+          "custCode": { "type": "integer" },
+          "protocolIdentifier": { "type": "string" },
+          "meterCode": { "type": "integer" },
+          "pvPower": { "type": "number" },
+          "battPower": { "type": "number" },
+          "battPower2": { "type": "number" },
+          "gridOrMeterPower": { "type": "number" },
+          "loadOrEpsPower": { "type": "number" },
+          "genPower": { "type": "number" },
+          "minPower": { "type": "number" },
+          "soc": { "type": "number" },
+          "smartLoadPower": { "type": "number" },
+          "upsLoadPower": { "type": "number" },
+          "homeLoadPower": { "type": "number" },
+          "chargePilePower": { "type": "number" },
+          "pvTo": { "type": "boolean" },
+          "toLoad": { "type": "boolean" },
+          "toSmartLoad": { "type": "boolean" },
+          "toUpsLoad": { "type": "boolean" },
+          "toHomeLoad": { "type": "boolean" },
+          "toGrid": { "type": "boolean" },
+          "toBat": { "type": "boolean" },
+          "batTo": { "type": "boolean" },
+          "gridTo": { "type": "boolean" },
+          "genTo": { "type": "boolean" },
+          "minTo": { "type": "boolean" },
+          "toChargePile": { "type": "boolean" },
+          "existsGen": { "type": "boolean" },
+          "existsMin": { "type": "boolean" },
+          "existsGrid": { "type": "boolean" },
+          "genOn": { "type": "boolean" },
+          "microOn": { "type": "boolean" },
+          "existsMeter": { "type": "boolean" },
+          "bmsCommFaultFlag": { "type": "boolean" },
+          "existsThreeLoad": { "type": "boolean" },
+          "existsSmartLoad": { "type": "boolean" },
+          "existsChargePile": { "type": "boolean" },
+          "pv": { "type": "object", "nullable": true },
+          "existThinkPower": { "type": "boolean" },
+          "time": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "PlantFlowResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PlantFlowData" }
+        }
+      },
+      "LoadRealtimeData": {
+        "type": "object",
+        "properties": {
+          "totalUsed": { "type": "number", "description": "Total energy used (kWh)" },
+          "dailyUsed": { "type": "number", "description": "Daily energy used (kWh)" },
+          "vip": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RealtimeVip" }
+          },
+          "totalPower": { "type": "number", "description": "Total load power (W)" },
+          "smartLoadStatus": { "type": "integer" },
+          "loadFac": { "type": "number" },
+          "upsPowerL1": { "type": "number" },
+          "upsPowerL2": { "type": "number" },
+          "upsPowerL3": { "type": "number" },
+          "upsPowerTotal": { "type": "number" }
+        }
+      },
+      "LoadRealtimeResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/LoadRealtimeData" }
+        }
+      },
+      "GenRealtimeData": {
+        "type": "object",
+        "properties": {
+          "genTotal": { "type": "number" },
+          "genDaily": { "type": "number" },
+          "totalPower": { "type": "number" },
+          "genFac": { "type": "number" },
+          "vip": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RealtimeVip" }
+          }
+        }
+      },
+      "GenRealtimeResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/GenRealtimeData" }
+        }
+      },
+      "PlantInverterInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "sn": { "type": "string" },
+          "alias": { "type": "string" },
+          "gsn": { "type": "string" },
+          "status": { "type": "integer" },
+          "type": { "type": "integer" },
+          "commTypeName": { "type": "string" },
+          "custCode": { "type": "integer" },
+          "version": { "$ref": "#/components/schemas/InverterVersion" },
+          "model": { "type": "string" },
+          "pac": { "type": "number" },
+          "etoday": { "type": "number" },
+          "etotal": { "type": "number" },
+          "updateAt": { "type": "string", "format": "date-time" },
+          "opened": { "type": "integer" },
+          "plant": { "$ref": "#/components/schemas/PlantSummary" },
+          "gatewayVO": { "$ref": "#/components/schemas/GatewayInfo" },
+          "sunsynkEquip": { "type": "boolean" },
+          "protocolIdentifier": { "type": "string" }
+        }
+      },
+      "PlantInvertersData": {
+        "type": "object",
+        "properties": {
+          "pageSize": { "type": "integer" },
+          "pageNumber": { "type": "integer" },
+          "total": { "type": "integer" },
+          "infos": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PlantInverterInfo" }
+          }
+        }
+      },
+      "PlantInvertersResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PlantInvertersData" }
+        }
+      },
+      "DailyOutputResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "infos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "dc_temp": { "type": "string" },
+                    "igbt_temp": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "GatewayExtendedInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "sn": { "type": "string" },
+          "key": { "type": "string" },
+          "status": { "type": "integer" },
+          "commType": { "type": "integer" },
+          "signal": { "type": "integer" },
+          "softVer": { "type": "string" },
+          "hardVer": { "type": "string" },
+          "updateAt": { "type": "string", "format": "date-time" },
+          "protocolType": { "type": "integer" },
+          "model": { "type": "string" },
+          "lldt": { "type": "string", "format": "date-time" },
+          "uploadCycle": { "type": "integer" },
+          "devName": { "type": "string" },
+          "commTypeName": { "type": "string" },
+          "proto": { "type": "string" }
+        }
+      },
+      "GatewaysResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "infos": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/GatewayExtendedInfo" }
+              }
+            }
+          }
+        }
+      },
+      "EventsResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "nextToken": { "type": "string", "nullable": true },
+              "record": {
+                "type": "array",
+                "items": { "type": "object" }
+              }
+            }
+          }
+        }
+      },
+      "MessagesResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "infos": {
+                "type": "array",
+                "items": { "type": "object" }
+              }
+            }
+          }
+        }
+      },
+      "PlantInfoResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/PlantInfo" }
+        }
+      },
+      "PlantInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "Plant ID" },
+          "name": { "type": "string", "description": "Plant name" },
+          "totalPower": { "type": "number", "description": "Total power capacity (kW)" },
+          "thumbUrl": { "type": "string", "description": "Thumbnail image URL" },
+          "joinDate": { "type": "string", "format": "date-time", "description": "Date the plant was registered" },
+          "type": { "type": "integer", "description": "Plant type" },
+          "status": { "type": "integer", "description": "Plant status" },
+          "charges": {
+            "type": "array",
+            "description": "Current electricity pricing charges (half-hourly slots for Live Price type 3)",
+            "items": { "$ref": "#/components/schemas/PlantInfoCharge" }
+          },
+          "products": {
+            "type": "array",
+            "nullable": true,
+            "description": "Energy provider products (present for Live Price type 3)",
+            "items": { "$ref": "#/components/schemas/PlantInfoProduct" }
+          },
+          "lon": { "type": "number", "description": "Longitude" },
+          "lat": { "type": "number", "description": "Latitude" },
+          "address": { "type": "string", "description": "Plant address" },
+          "master": { "$ref": "#/components/schemas/PlantInfoMaster" },
+          "currency": { "$ref": "#/components/schemas/PlantInfoCurrency" },
+          "timezone": { "$ref": "#/components/schemas/PlantInfoTimezone" },
+          "realtime": { "$ref": "#/components/schemas/PlantInfoRealtime" },
+          "createAt": { "type": "string", "format": "date-time" },
+          "phone": { "type": "string" },
+          "email": { "type": "string" },
+          "installer": { "type": "string" },
+          "principal": { "type": "string" },
+          "plantPermission": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of permission strings for this plant"
+          },
+          "fluxProducts": { "type": "object", "nullable": true },
+          "productWarrantyRegistered": { "type": "integer" },
+          "ctEnable": { "type": "integer" },
+          "invest": { "type": "number", "description": "Total investment amount" },
+          "epexProduct": { "type": "object", "nullable": true }
+        }
+      },
+      "PlantInfoCharge": {
+        "type": "object",
+        "description": "A pricing charge entry returned in the plant info response",
+        "properties": {
+          "id": { "type": "integer" },
+          "startRange": { "type": "string", "description": "Start time (HH:MM)" },
+          "endRange": { "type": "string", "description": "End time (HH:MM)" },
+          "price": { "type": "number", "description": "Price per unit" },
+          "type": { "type": "integer", "description": "Pricing type: 1 = Constant, 2 = Time of Use, 3 = Live Price" },
+          "stationId": { "type": "integer", "description": "Plant/station ID" },
+          "createAt": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["import", "export"], "description": "Energy direction for this charge" }
+        }
+      },
+      "PlantInfoProduct": {
+        "type": "object",
+        "description": "Energy provider product in plant info response",
+        "properties": {
+          "direction": { "type": "integer", "description": "1 = export, 0 = import" },
+          "ratesThreshold": { "type": "number" },
+          "limitSoc": { "type": "integer", "nullable": true, "description": "State of charge limit (%). Null for export." },
+          "provider": { "type": "integer", "description": "Energy provider ID" },
+          "regionId": { "type": "integer", "description": "Region ID" }
+        }
+      },
+      "PlantInfoMaster": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "nickname": { "type": "string" },
+          "mobile": { "type": "string", "nullable": true }
+        }
+      },
+      "PlantInfoCurrency": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string", "description": "Currency code (e.g. GBP)" },
+          "text": { "type": "string", "description": "Currency symbol (e.g. £)" }
+        }
+      },
+      "PlantInfoTimezone": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string", "description": "Timezone code (e.g. Europe/London)" },
+          "text": { "type": "string", "description": "Timezone display text" }
+        }
+      },
+      "PlantInfoRealtime": {
+        "type": "object",
+        "description": "Real-time energy and financial data for the plant",
+        "properties": {
+          "pac": { "type": "number", "description": "Current power (W)" },
+          "efficiency": { "type": "number" },
+          "etoday": { "type": "number", "description": "Energy generated today (kWh)" },
+          "emonth": { "type": "number", "description": "Energy generated this month (kWh)" },
+          "eyear": { "type": "number", "description": "Energy generated this year (kWh)" },
+          "etotal": { "type": "number", "description": "Total energy generated (kWh)" },
+          "totalPower": { "type": "number", "description": "Total power capacity (kW)" },
+          "currency": { "$ref": "#/components/schemas/PlantInfoCurrency" },
+          "invest": { "type": "number" },
+          "income": { "type": "number", "description": "Income amount" },
+          "updateAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PlantIncomeRequest": {
+        "type": "object",
+        "required": ["id", "currency", "invest", "charges"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plant ID"
+          },
+          "currency": {
+            "type": "integer",
+            "description": "Currency code"
+          },
+          "invest": {
+            "type": "number",
+            "description": "Total investment amount"
+          },
+          "charges": {
+            "type": "array",
+            "description": "Pricing entries. For Constant Price (type 1): single entry covering 00:00–24:00. For Time of Use (type 2): up to 6 time slots, must start at 00:00 and end at 24:00. For Live Price (type 3, UK only): single entry with empty time ranges.",
+            "maxItems": 6,
+            "items": {
+              "$ref": "#/components/schemas/PlantIncomeCharge"
+            }
+          },
+          "products": {
+            "type": "array",
+            "description": "Energy provider products. Only used with Live Price (type 3, UK only).",
+            "items": {
+              "$ref": "#/components/schemas/PlantIncomeProduct"
+            }
+          }
+        }
+      },
+      "PlantIncomeCharge": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "integer" }
+            ],
+            "description": "Price per unit of energy. String for types 1 and 2, integer (0) for type 3."
+          },
+          "type": {
+            "oneOf": [
+              { "type": "string", "enum": ["1", "3"] },
+              { "type": "integer", "enum": [2] }
+            ],
+            "description": "Pricing type: 1 = Constant Price, 2 = Time of Use, 3 = Live Price (UK only)"
+          },
+          "startRange": {
+            "type": "string",
+            "description": "Start time (HH:MM). Empty string for Live Price."
+          },
+          "endRange": {
+            "type": "string",
+            "description": "End time (HH:MM). Empty string for Live Price."
+          }
+        }
+      },
+      "PlantIncomeProduct": {
+        "type": "object",
+        "description": "Energy provider product configuration for Live Price (UK only)",
+        "properties": {
+          "direction": {
+            "type": "integer",
+            "description": "Energy direction: 1 = export, 0 = import"
+          },
+          "ratesThreshold": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "integer" }
+            ],
+            "description": "Rate threshold value"
+          },
+          "provider": {
+            "type": "integer",
+            "description": "Energy provider ID"
+          },
+          "limitSoc": {
+            "type": "integer",
+            "nullable": true,
+            "description": "State of charge limit (%). Null for export direction."
+          },
+          "regionId": {
+            "type": "integer",
+            "description": "Region ID for the energy provider"
+          }
+        }
+      },
+      "InverterSettingsSet": {
+        "type": "object",
+        "description": "Inverter settings to update. All properties are optional — only included fields will be updated. This endpoint accepts partial requests.",
+        "properties": {
+          "sn": { "type": "string", "description": "Inverter serial number" },
+          "safetyType": { "type": "string" },
+          "battMode": { "type": "string" },
+          "solarSell": { "type": "string" },
+          "pvMaxLimit": { "type": "string" },
+          "energyMode": { "type": "string" },
+          "peakAndVallery": { "type": "string" },
+          "sysWorkMode": { "type": "string" },
+          "sellTime1": { "type": "string", "description": "Time slot 1 start time (HH:MM)" },
+          "sellTime2": { "type": "string", "description": "Time slot 2 start time (HH:MM)" },
+          "sellTime3": { "type": "string", "description": "Time slot 3 start time (HH:MM)" },
+          "sellTime4": { "type": "string", "description": "Time slot 4 start time (HH:MM)" },
+          "sellTime5": { "type": "string", "description": "Time slot 5 start time (HH:MM)" },
+          "sellTime6": { "type": "string", "description": "Time slot 6 start time (HH:MM)" },
+          "sellTime1Pac": { "type": "string" },
+          "sellTime2Pac": { "type": "string" },
+          "sellTime3Pac": { "type": "string" },
+          "sellTime4Pac": { "type": "string" },
+          "sellTime5Pac": { "type": "string" },
+          "sellTime6Pac": { "type": "string" },
+          "cap1": { "type": "string", "description": "Battery capacity threshold for time slot 1 (%)" },
+          "cap2": { "type": "string", "description": "Battery capacity threshold for time slot 2 (%)" },
+          "cap3": { "type": "string", "description": "Battery capacity threshold for time slot 3 (%)" },
+          "cap4": { "type": "string", "description": "Battery capacity threshold for time slot 4 (%)" },
+          "cap5": { "type": "string", "description": "Battery capacity threshold for time slot 5 (%)" },
+          "cap6": { "type": "string", "description": "Battery capacity threshold for time slot 6 (%)" },
+          "sellTime1Volt": { "type": "string" },
+          "sellTime2Volt": { "type": "string" },
+          "sellTime3Volt": { "type": "string" },
+          "sellTime4Volt": { "type": "string" },
+          "sellTime5Volt": { "type": "string" },
+          "sellTime6Volt": { "type": "string" },
+          "zeroExportPower": { "type": "string" },
+          "solarMaxSellPower": { "type": "string" },
+          "gridPeakShaving": { "type": "string" },
+          "lowVoltCrossEn": { "type": "string" },
+          "generatorStartCap": { "type": "string" },
+          "batteryLowCap": { "type": "string" },
+          "time1on": { "type": "boolean", "description": "Enable time slot 1" },
+          "time2on": { "type": "boolean", "description": "Enable time slot 2" },
+          "time3on": { "type": "boolean", "description": "Enable time slot 3" },
+          "time4on": { "type": "boolean", "description": "Enable time slot 4" },
+          "time5on": { "type": "boolean", "description": "Enable time slot 5" },
+          "time6on": { "type": "boolean", "description": "Enable time slot 6" },
+          "genTime1on": { "type": "boolean", "description": "Enable generator time slot 1" },
+          "genTime2on": { "type": "boolean", "description": "Enable generator time slot 2" },
+          "genTime3on": { "type": "boolean", "description": "Enable generator time slot 3" },
+          "genTime4on": { "type": "boolean", "description": "Enable generator time slot 4" },
+          "genTime5on": { "type": "boolean", "description": "Enable generator time slot 5" },
+          "genTime6on": { "type": "boolean", "description": "Enable generator time slot 6" },
+          "mondayOn": { "type": "boolean" },
+          "tuesdayOn": { "type": "boolean" },
+          "wednesdayOn": { "type": "boolean" },
+          "thursdayOn": { "type": "boolean" },
+          "fridayOn": { "type": "boolean" },
+          "saturdayOn": { "type": "boolean" },
+          "sundayOn": { "type": "boolean" }
+        }
+      },
+      "InverterSettings": {
+        "type": "object",
+        "properties": {
+          "sellTime1": { "type": "string" },
+          "genTime2on": { "type": "string" },
+          "beep": { "type": "string" },
+          "sellTime2": { "type": "string" },
+          "wattOverExitFreqStopDelay": { "type": "string" },
+          "sellTime5": { "type": "string" },
+          "sellTime6": { "type": "string" },
+          "sellTime3": { "type": "string" },
+          "sellTime4": { "type": "string" },
+          "exMeterCtSwitch": { "type": "string" },
+          "sdChargeOn": { "type": "string" },
+          "lockInVoltVar": { "type": "string" },
+          "time2on": { "type": "string" },
+          "batWarn": { "type": "string" },
+          "wattVarEnable": { "type": "string" },
+          "reconnMinVolt": { "type": "string" },
+          "caFStart": { "type": "string" },
+          "pvMaxLimit": { "type": "string" },
+          "sensorsCheck": { "type": "string" },
+          "underFreq2Delay": { "type": "string" },
+          "varQac2": { "type": "string" },
+          "varQac3": { "type": "string" },
+          "varQac1": { "type": "string" },
+          "wattUnderExitFreq": { "type": "string" },
+          "overVolt1": { "type": "string" },
+          "overVolt2": { "type": "string" },
+          "varQac4": { "type": "string" },
+          "genPeakPower": { "type": "string" },
+          "meterB": { "type": "string" },
+          "eeprom": { "type": "string" },
+          "meterA": { "type": "string" },
+          "comSet": { "type": "string" },
+          "caVoltPressureEnable": { "type": "string" },
+          "meterC": { "type": "string" },
+          "wattUnderFreq1": { "type": "string" },
+          "solarMaxSellPower": { "type": "string" },
+          "acCoupleOnGridSideEnable": { "type": "string" },
+          "thursdayOn": { "type": "string" },
+          "time3On": { "type": "string" },
+          "batteryRestartCap": { "type": "string" },
+          "overFreq1Delay": { "type": "string" },
+          "bmsErrStop": { "type": "string" },
+          "checkTime": { "type": "string" },
+          "acOutputPowerLimit": { "type": "string" },
+          "atsSwitch": { "type": "string" },
+          "pv1SelfCheck": { "type": "string" },
+          "acCurrentUp": { "type": "string" },
+          "rsd": { "type": "string" },
+          "batteryOn": { "type": "string" },
+          "genTime1on": { "type": "string" },
+          "volt12": { "type": "string" },
+          "volt10": { "type": "string" },
+          "volt11": { "type": "string" },
+          "time1on": { "type": "string" },
+          "wattUnderFreq1StartDelay": { "type": "string" },
+          "rcd": { "type": "string" },
+          "chargeVolt": { "type": "string" },
+          "wednesdayOn": { "type": "string" },
+          "mpptMulti": { "type": "string" },
+          "floatVolt": { "type": "string" },
+          "workState": { "type": "string" },
+          "loadMode": { "type": "string" },
+          "sysWorkMode": { "type": "string" },
+          "sn": { "type": "string" },
+          "genCoolingTime": { "type": "string" },
+          "genPeakShaving": { "type": "string" },
+          "offGridImmediatelyOff": { "type": "string" },
+          "sellTime3Volt": { "type": "string" },
+          "sellTime2Pac": { "type": "string" },
+          "current12": { "type": "string" },
+          "time2On": { "type": "string" },
+          "current10": { "type": "string" },
+          "current11": { "type": "string" },
+          "batteryEfficiency": { "type": "string" },
+          "genAndGridSignal": { "type": "string" },
+          "pv3SelfCheck": { "type": "string" },
+          "wattV4": { "type": "string" },
+          "acFreqLow": { "type": "string" },
+          "wattV2": { "type": "string" },
+          "wattV3": { "type": "string" },
+          "wattV1": { "type": "string" },
+          "batteryEmptyV": { "type": "string" },
+          "open": { "type": "string" },
+          "reconnMaxFreq": { "type": "string" },
+          "standard": { "type": "string" },
+          "wattVarReactive2": { "type": "string" },
+          "disableFloatCharge": { "type": "string" },
+          "inverterType": { "type": "string" },
+          "wattVarReactive3": { "type": "string" },
+          "wattVarReactive4": { "type": "string" },
+          "solarPSU": { "type": "string" },
+          "fridayOn": { "type": "string" },
+          "wattVarReactive1": { "type": "string" },
+          "time4on": { "type": "string" },
+          "cap6": { "type": "string" },
+          "generatorForcedStart": { "type": "string" },
+          "overLongVolt": { "type": "string" },
+          "cap4": { "type": "string" },
+          "cap5": { "type": "string" },
+          "batteryChargeType": { "type": "string" },
+          "genOffVolt": { "type": "string" },
+          "cap2": { "type": "string" },
+          "cap3": { "type": "string" },
+          "absorptionVolt": { "type": "string" },
+          "genToLoad": { "type": "string" },
+          "mpptNum": { "type": "string" },
+          "underFreq2": { "type": "string" },
+          "underFreq1": { "type": "string" },
+          "wattPfEnable": { "type": "string" },
+          "remoteLock": { "type": "string" },
+          "generatorStartCap": { "type": "string" },
+          "batteryMaxCurrentCharge": { "type": "string" },
+          "overFreq1": { "type": "string" },
+          "tuesdayOn": { "type": "string" },
+          "genOnVolt": { "type": "string" },
+          "overFreq2": { "type": "string" },
+          "solar2WindInputEnable": { "type": "string" },
+          "caVStop": { "type": "string" },
+          "time5On": { "type": "string" },
+          "battMode": { "type": "string" },
+          "allowRemoteControl": { "type": "string" },
+          "genOnCap": { "type": "string" },
+          "gridAlwaysOn": { "type": "string" },
+          "batteryLowVolt": { "type": "string" },
+          "acFreqUp": { "type": "string" },
+          "cap1": { "type": "string" },
+          "chargeLimit": { "type": "string" },
+          "generatorStartVolt": { "type": "string" },
+          "overVolt1Delay": { "type": "string" },
+          "sellTime1Pac": { "type": "string" },
+          "californiaFreqPressureEnable": { "type": "string" },
+          "activePowerControl": { "type": "string" },
+          "batteryRestartVolt": { "type": "string" },
+          "zeroExportPower": { "type": "string" },
+          "overVolt2Delay": { "type": "string" },
+          "equChargeCycle": { "type": "string" },
+          "dischargeCurrent": { "type": "string" },
+          "solarSell": { "type": "string" },
+          "mpptVoltLow": { "type": "string" },
+          "time3on": { "type": "string" },
+          "wattVoltEnable": { "type": "string" },
+          "caFwEnable": { "type": "string" },
+          "maxOperatingTimeOfGen": { "type": "string" },
+          "micExportGridOff": { "type": "string" },
+          "importPower": { "type": "string" },
+          "pvLine": { "type": "string" },
+          "three41": { "type": "string" },
+          "caVwEnable": { "type": "string" },
+          "batteryShutdownVolt": { "type": "string" },
+          "volt3": { "type": "string" },
+          "volt4": { "type": "string" },
+          "volt1": { "type": "string" },
+          "volt2": { "type": "string" },
+          "startVoltUp": { "type": "string" },
+          "volt7": { "type": "string" },
+          "volt8": { "type": "string" },
+          "volt5": { "type": "string" },
+          "sellTime6Pac": { "type": "string" },
+          "volt6": { "type": "string" },
+          "time4On": { "type": "string" },
+          "sellTime4Volt": { "type": "string" },
+          "volt9": { "type": "string" },
+          "facLowProtect": { "type": "string" },
+          "wattOverFreq1": { "type": "string" },
+          "wattPf4": { "type": "string" },
+          "lowNoiseMode": { "type": "string" },
+          "tempco": { "type": "string" },
+          "arcFactFrz": { "type": "string" },
+          "wattPf1": { "type": "string" },
+          "wattPf2": { "type": "string" },
+          "wattPf3": { "type": "string" },
+          "meterSelect": { "type": "string" },
+          "genChargeOn": { "type": "string" },
+          "externalCtRatio": { "type": "string" },
+          "gridMode": { "type": "string" },
+          "sellTime5Pac": { "type": "string" },
+          "lowThrough": { "type": "string" },
+          "drmEnable": { "type": "string" },
+          "pv2SelfCheck": { "type": "string" },
+          "underFreq1Delay": { "type": "string" },
+          "energyMode": { "type": "string" },
+          "ampm": { "type": "string" },
+          "gridPeakShaving": { "type": "string" },
+          "time6on": { "type": "string" },
+          "fac": { "type": "string" },
+          "vacLowProtect": { "type": "string" },
+          "chargeCurrentLimit": { "type": "string" },
+          "caLv3": { "type": "string" },
+          "sundayOn": { "type": "string" },
+          "genTime6on": { "type": "string" },
+          "batteryImpedance": { "type": "string" },
+          "safetyType": { "type": "string" },
+          "varVolt4": { "type": "string" },
+          "varVolt3": { "type": "string" },
+          "varVolt2": { "type": "string" },
+          "specialFunction": { "type": "string" },
+          "varVolt1": { "type": "string" },
+          "mondayOn": { "type": "string" },
+          "commAddr": { "type": "string" },
+          "saturdayOn": { "type": "string" },
+          "dischargeLimit": { "type": "string" },
+          "atsEnable": { "type": "string" },
+          "exMeterCt": { "type": "string" },
+          "overFreq2Delay": { "type": "string" },
+          "phase": { "type": "string" },
+          "autoDim": { "type": "string" },
+          "batteryWorkStatus": { "type": "string" },
+          "genToLoadOn": { "type": "string" },
+          "timeSync": { "type": "string" },
+          "wattOverWgralFreq": { "type": "string" },
+          "sdBatteryCurrent": { "type": "string" },
+          "peakAndVallery": { "type": "string" },
+          "batteryEmptyVolt": { "type": "string" },
+          "batteryLowCap": { "type": "string" },
+          "underVolt2Delay": { "type": "string" },
+          "equChargeTime": { "type": "string" },
+          "battType": { "type": "string" },
+          "gridPeakPower": { "type": "string" },
+          "reset": { "type": "string" },
+          "vacHighProtect": { "type": "string" },
+          "genTime5on": { "type": "string" },
+          "deyeGenPowerDoubleFlag": { "type": "string" },
+          "pwm": { "type": "string" },
+          "time5on": { "type": "string" },
+          "highThrough": { "type": "string" },
+          "lockOutVoltVar": { "type": "string" },
+          "lockInWattPF": { "type": "string" },
+          "caVStart": { "type": "string" },
+          "acVoltUp": { "type": "string" },
+          "wattFreqEnable": { "type": "string" },
+          "wattOverExitFreq": { "type": "string" },
+          "sellTime5Volt": { "type": "string" },
+          "caFStop": { "type": "string" },
+          "lowPowerMode": { "type": "string" },
+          "varVoltEnable": { "type": "string" },
+          "acCoupleFreqUpper": { "type": "string" },
+          "impedanceLow": { "type": "string" },
+          "acType": { "type": "string" },
+          "facHighProtect": { "type": "string" },
+          "recoveryTime": { "type": "string" },
+          "underVolt2": { "type": "string" },
+          "lithiumMode": { "type": "string" },
+          "underVolt1": { "type": "string" },
+          "gridSignal": { "type": "string" },
+          "wattOverFreq1StartDelay": { "type": "string" },
+          "testCommand": { "type": "string" },
+          "time6On": { "type": "string" },
+          "signalIslandModeEnable": { "type": "string" },
+          "upsStandard": { "type": "string" },
+          "reconnMinFreq": { "type": "string" },
+          "parallelRegister2": { "type": "string" },
+          "parallelRegister1": { "type": "string" },
+          "startVoltLow": { "type": "string" },
+          "smartLoadOpenDelay": { "type": "string" },
+          "genTime4on": { "type": "string" },
+          "sellTime1Volt": { "type": "string" },
+          "wattVarActive4": { "type": "string" },
+          "wattVarActive3": { "type": "string" },
+          "genConnectGrid": { "type": "string" },
+          "flag2": { "type": "string" },
+          "softStart": { "type": "string" },
+          "lockOutWattPF": { "type": "string" },
+          "sdStartCap": { "type": "string" },
+          "current4": { "type": "string" },
+          "current3": { "type": "string" },
+          "current2": { "type": "string" },
+          "current1": { "type": "string" },
+          "gfdi": { "type": "string" },
+          "current8": { "type": "string" },
+          "current7": { "type": "string" },
+          "current6": { "type": "string" },
+          "current5": { "type": "string" },
+          "checkSelfTime": { "type": "string" },
+          "limit": { "type": "string" },
+          "wattW3": { "type": "string" },
+          "wattVarActive2": { "type": "string" },
+          "wattW4": { "type": "string" },
+          "wattVarActive1": { "type": "string" },
+          "externalCurrent": { "type": "string" },
+          "wattW1": { "type": "string" },
+          "wattW2": { "type": "string" },
+          "vnResponseTime": { "type": "string" },
+          "batteryShutdownCap": { "type": "string" },
+          "wattUnderExitFreqStopDelay": { "type": "string" },
+          "offset": { "type": "string" },
+          "sellTime4Pac": { "type": "string" },
+          "wattActivePf1": { "type": "string" },
+          "current9": { "type": "string" },
+          "dischargeVolt": { "type": "string" },
+          "qvResponseTime": { "type": "string" },
+          "wattActivePf4": { "type": "string" },
+          "time1On": { "type": "string" },
+          "wattActivePf2": { "type": "string" },
+          "four19": { "type": "string" },
+          "wattActivePf3": { "type": "string" },
+          "micExportAll": { "type": "string" },
+          "batteryMaxCurrentDischarge": { "type": "string" },
+          "isletProtect": { "type": "string" },
+          "lockOutChange": { "type": "string" },
+          "californiaVoltPressureEnable": { "type": "string" },
+          "equVoltCharge": { "type": "string" },
+          "batteryCap": { "type": "string" },
+          "genOffCap": { "type": "string" },
+          "genTime3on": { "type": "string" },
+          "sellTime6Volt": { "type": "string" },
+          "sellTime3Pac": { "type": "string" },
+          "acCoupleOnLoadSideEnable": { "type": "string" },
+          "sdStartVolt": { "type": "string" },
+          "generatorBatteryCurrent": { "type": "string" },
+          "reconnMaxVolt": { "type": "string" },
+          "modbusSn": { "type": "string" },
+          "inverterOutputVoltage": { "type": "string" },
+          "chargeCurrent": { "type": "string" },
+          "solar1WindInputEnable": { "type": "string" },
+          "dcVoltUp": { "type": "string" },
+          "parallel": { "type": "string" },
+          "limter": { "type": "string" },
+          "batErr": { "type": "string" },
+          "backupDelay": { "type": "string" },
+          "dischargeCurrentLimit": { "type": "string" },
+          "arcFactT": { "type": "string" },
+          "wattUnderWgalFreq": { "type": "string" },
+          "commBaudRate": { "type": "string" },
+          "equipMode": { "type": "string" },
+          "gridSideINVMeter2": { "type": "string" },
+          "underVolt1Delay": { "type": "string" },
+          "arcFaultType": { "type": "string" },
+          "arcFactB": { "type": "string" },
+          "normalUpwardSlope": { "type": "string" },
+          "arcFactC": { "type": "string" },
+          "pf": { "type": "string" },
+          "arcFactD": { "type": "string" },
+          "genMinSolar": { "type": "string" },
+          "sellTime2Volt": { "type": "string" },
+          "arcFactF": { "type": "string" },
+          "arcFactI": { "type": "string" },
+          "acVoltLow": { "type": "string" },
+          "genSignal": { "type": "string" }
+        }
+      },
+      "InverterSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "integer" },
+          "msg": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/InverterSettings" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Endpoints for authentication and obtaining access tokens"
+    },
+    {
+      "name": "Plants",
+      "description": "Endpoints for retrieving plant and energy flow data"
+    },
+    {
+      "name": "Inverters",
+      "description": "Endpoints for inverter management"
+    },
+    {
+      "name": "Inverter Data",
+      "description": "Real-time inverter data endpoints (battery, grid, load, generation)"
+    },
+    {
+      "name": "Settings",
+      "description": "Endpoints for reading and writing inverter settings"
+    },
+    {
+      "name": "Gateways",
+      "description": "Endpoints for gateway information"
+    },
+    {
+      "name": "Events",
+      "description": "Endpoints for system events"
+    },
+    {
+      "name": "Notifications",
+      "description": "Endpoints for system notifications"
+    }
+  ]
+}
+
