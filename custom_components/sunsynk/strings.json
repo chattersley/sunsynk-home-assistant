@@ -93,6 +93,7 @@
       "plant_smart_load_power": { "name": "Smart load power" },
       "plant_home_load_power": { "name": "Home load power" },
       "plant_ups_load_power": { "name": "UPS load power" },
+      "plant_installed_pv_capacity": { "name": "Installed PV capacity" },
       "inverter_power_output": { "name": "Power output" },
       "battery_soc": { "name": "Battery SOC" },
       "battery_voltage": { "name": "Battery voltage" },
