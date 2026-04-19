@@ -37,6 +37,16 @@ def mock_authenticate():
         yield mock_auth
 
 
+@pytest.fixture(autouse=True)
+def _mock_setup_entry_network():
+    """Prevent async_setup_entry from making real network calls after CREATE_ENTRY."""
+    with patch(
+        "custom_components.sunsynk.async_fetch_all_data",
+        return_value={},
+    ):
+        yield
+
+
 async def test_user_flow_success(
     hass: HomeAssistant, mock_authenticate
 ) -> None:
