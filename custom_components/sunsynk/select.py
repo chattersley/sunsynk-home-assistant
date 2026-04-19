@@ -38,7 +38,7 @@ SELL_TIME_DEFS: list[tuple[str, str, str]] = [
     ("sellTime6", "sell_time_6", "sell_time6"),
 ]
 
-SYS_WORK_MODES = ["0", "1", "2", "3"]
+SYS_WORK_MODES = ["0", "1", "2"]
 
 
 class SunSynkSellTimeSelect(CoordinatorEntity, SelectEntity):  # type: ignore[misc]

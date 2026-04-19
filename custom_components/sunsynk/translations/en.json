@@ -259,10 +259,9 @@
       "sys_work_mode": {
         "name": "System work mode",
         "state": {
-          "0": "Selling first",
-          "1": "Zero export to load",
-          "2": "Zero export to CT",
-          "3": "Self-use"
+          "0": "Selling First",
+          "1": "Zero-Export + Limit To Load Only",
+          "2": "Limited to Home"
         }
       },
       "pricing_type": { "name": "Pricing type" },
