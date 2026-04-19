@@ -33,3 +33,7 @@ htmlcov/
 .storage/
 home-assistant_v2.db
 home-assistant.log*
+
+# Local API payload samples (may contain live serial numbers / credentials)
+setrequest.json
+setminrequest.json
