@@ -209,6 +209,7 @@
       "battery_restart_cap": { "name": "Battery restart cap" },
       "battery_shutdown_cap": { "name": "Battery shutdown cap" },
       "battery_max_charge_current": { "name": "Battery max charge current" },
+      "zero_export_power": { "name": "Zero export power" },
       "charge_price_0": { "name": "Charge price 1" },
       "charge_price_1": { "name": "Charge price 2" },
       "charge_price_2": { "name": "Charge price 3" },
