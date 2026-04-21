@@ -373,6 +373,17 @@ class SunSynkInverterSettingsSensor(SunSynkInverterSensor):
     _attr_entity_registry_enabled_default = False
 
 
+class SunSynkHiddenInverterSensor(SunSynkInverterSensor):
+    """Inverter sensor disabled by default (e.g. BMS-reported advisory limits).
+
+    Used for readings that duplicate a user-settable number entity and only
+    confuse the default dashboard — power users can re-enable from the UI.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+
 # ---------------------------------------------------------------------------
 # Enum sensor helpers — map numeric status codes to labelled enum states
 # ---------------------------------------------------------------------------
@@ -1145,20 +1156,6 @@ def _create_inverter_sensors(
                 SensorDeviceClass.VOLTAGE,
                 SensorStateClass.MEASUREMENT,
             ),
-            (
-                "charge_current_limit",
-                "battery_charge_current_limit",
-                UnitOfElectricCurrent.AMPERE,
-                SensorDeviceClass.CURRENT,
-                SensorStateClass.MEASUREMENT,
-            ),
-            (
-                "discharge_current_limit",
-                "battery_discharge_current_limit",
-                UnitOfElectricCurrent.AMPERE,
-                SensorDeviceClass.CURRENT,
-                SensorStateClass.MEASUREMENT,
-            ),
             ("correct_cap", "battery_capacity", "Ah", None, SensorStateClass.MEASUREMENT),
             (
                 "current",
@@ -1229,6 +1226,24 @@ def _create_inverter_sensors(
                 _BATTERY_STATUS_CODES,
             )
         )
+        hidden_batt_defs: list[tuple[str, str]] = [
+            ("charge_current_limit", "battery_charge_current_limit"),
+            ("discharge_current_limit", "battery_discharge_current_limit"),
+        ]
+        for key, tkey in hidden_batt_defs:
+            entities.append(
+                SunSynkHiddenInverterSensor(
+                    coordinator,
+                    plant_id,
+                    sn,
+                    key,
+                    tkey,
+                    "battery",
+                    UnitOfElectricCurrent.AMPERE,
+                    SensorDeviceClass.CURRENT,
+                    SensorStateClass.MEASUREMENT,
+                )
+            )
 
     # --- Grid sensors ---
     if inv_data.get("grid"):
