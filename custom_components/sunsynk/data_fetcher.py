@@ -377,6 +377,7 @@ _API_KEY_TO_SNAKE: dict[str, str] = {
     "batteryShutdownCap": "battery_shutdown_cap",
     "batteryMaxCurrentCharge": "battery_max_current_charge",
     "batteryLowCap": "battery_low_cap",
+    "zeroExportPower": "zero_export_power",
 }
 
 # Minimum required fields for the set endpoint (snake_case names matching InverterSettings attrs)
