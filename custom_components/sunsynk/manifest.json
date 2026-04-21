@@ -10,7 +10,7 @@
   "quality_scale": "bronze",
   "requirements": [
     "cryptography>=46.0.5",
-    "sunsynk-python>=0.2.1"
+    "sunsynk-python>=0.3.0"
   ],
   "version": "1.2.2"
 }

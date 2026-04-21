@@ -40,6 +40,17 @@ GEN_TIMER_TOGGLE_DEFS: list[tuple[str, str, str, str, str]] = [
     ("genTime6on", "gen_timer_6_on", "gen_time6on", "time6on", "time6on"),
 ]
 
+# Per-slot sell toggles — independent of the grid/gen charge pair.
+# (api_key, translation_key, settings_key)
+SELL_TIMER_TOGGLE_DEFS: list[tuple[str, str, str]] = [
+    ("sellTime1on", "sell_time_1_on", "sell_time1on"),
+    ("sellTime2on", "sell_time_2_on", "sell_time2on"),
+    ("sellTime3on", "sell_time_3_on", "sell_time3on"),
+    ("sellTime4on", "sell_time_4_on", "sell_time4on"),
+    ("sellTime5on", "sell_time_5_on", "sell_time5on"),
+    ("sellTime6on", "sell_time_6_on", "sell_time6on"),
+]
+
 # Simple boolean toggles: (api_key, translation_key, settings_key)
 SIMPLE_TOGGLE_DEFS: list[tuple[str, str, str]] = [
     ("peakAndVallery", "use_timer", "peak_and_vallery"),
@@ -254,6 +265,21 @@ async def async_setup_entry(
                         settings_key,
                         paired_api,
                         paired_sk,
+                        token_manager,
+                        region_idx,
+                    )
+                )
+
+            # Per-slot sell toggles (independent of grid/gen charge pair)
+            for api_key, name, settings_key in SELL_TIMER_TOGGLE_DEFS:
+                entities.append(
+                    SunSynkSimpleSwitch(
+                        coordinator,
+                        plant_id,
+                        sn,
+                        api_key,
+                        name,
+                        settings_key,
                         token_manager,
                         region_idx,
                     )
