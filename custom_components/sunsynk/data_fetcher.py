@@ -370,6 +370,12 @@ _API_KEY_TO_SNAKE: dict[str, str] = {
     "genTime4on": "gen_time4on",
     "genTime5on": "gen_time5on",
     "genTime6on": "gen_time6on",
+    "sellTime1on": "sell_time1on",
+    "sellTime2on": "sell_time2on",
+    "sellTime3on": "sell_time3on",
+    "sellTime4on": "sell_time4on",
+    "sellTime5on": "sell_time5on",
+    "sellTime6on": "sell_time6on",
     "peakAndVallery": "peak_and_vallery",
     "energyMode": "energy_mode",
     "sysWorkMode": "sys_work_mode",
@@ -406,6 +412,12 @@ _MIN_REQUIRED_FIELDS: list[str] = [
     "gen_time4on",
     "gen_time5on",
     "gen_time6on",
+    "sell_time1on",
+    "sell_time2on",
+    "sell_time3on",
+    "sell_time4on",
+    "sell_time5on",
+    "sell_time6on",
 ]
 
 

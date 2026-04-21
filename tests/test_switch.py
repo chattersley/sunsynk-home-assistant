@@ -137,8 +137,8 @@ async def test_switch_entities_created(
         e for e in entity_reg.entities.values()
         if e.platform == "sunsynk" and e.domain == "switch"
     ]
-    # 6 timer + 6 gen timer + 2 simple (use_timer, energy_mode) = 14
-    assert len(switch_entities) == 14
+    # 6 timer + 6 gen timer + 6 sell + 2 simple (use_timer, energy_mode) = 20
+    assert len(switch_entities) == 20
 
 
 async def test_paired_timer_turn_on(

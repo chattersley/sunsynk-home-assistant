@@ -142,6 +142,30 @@ class TestWriteSettings:
     @pytest.mark.asyncio
     @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
     @patch("custom_components.sunsynk.data_fetcher.SunSynk")
+    async def test_write_settings_translates_sell_time_on(
+        self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
+    ) -> None:
+        """camelCase `sellTime{N}on` must be translated to snake_case `sell_time{N}on`."""
+        mock_auth.return_value = MagicMock(
+            access_token="tok", token_type="bearer", expires_in=3600,
+        )
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.settings.set_inverter_settings_async = AsyncMock(
+            return_value=MagicMock(code=0, msg="success"),
+        )
+
+        tm = TokenManager("test@example.com", "pass", 0)
+        await async_write_settings(tm, 0, "SN123", {"sellTime3on": "1"})
+
+        call_kwargs = mock_client.settings.set_inverter_settings_async.call_args.kwargs
+        assert call_kwargs["sell_time3on"] == "1"
+        assert "sellTime3on" not in call_kwargs
+
+    @pytest.mark.asyncio
+    @patch("custom_components.sunsynk.data_fetcher.async_authenticate", new_callable=AsyncMock)
+    @patch("custom_components.sunsynk.data_fetcher.SunSynk")
     async def test_write_settings_tracks_error(
         self, mock_client_cls: MagicMock, mock_auth: AsyncMock,
     ) -> None:
