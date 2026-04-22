@@ -42,6 +42,7 @@ EXTRA_NUMBER_DEFS: list[tuple[str, str, str, float, float]] = [
     ("batteryRestartCap", "battery_restart_cap", "battery_restart_cap", 0, 100),
     ("batteryShutdownCap", "battery_shutdown_cap", "battery_shutdown_cap", 0, 100),
     ("batteryMaxCurrentCharge", "battery_max_charge_current", "battery_max_current_charge", 0, 250),
+    ("batteryMaxCurrentDischarge", "battery_max_discharge_current", "battery_max_current_discharge", 0, 250),
 ]
 
 

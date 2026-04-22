@@ -229,7 +229,8 @@
       "settings_sell_time_6_pac": { "name": "Timer 6 power" },
       "settings_battery_restart_cap": { "name": "Battery restart cap" },
       "settings_battery_shutdown_cap": { "name": "Battery shutdown cap" },
-      "settings_battery_max_charge_current": { "name": "Battery max charge current" }
+      "settings_battery_max_charge_current": { "name": "Battery max charge current" },
+      "settings_battery_max_discharge_current": { "name": "Battery max discharge current" }
     },
     "number": {
       "cap_soc_floor_1": { "name": "SOC limit 1" },
@@ -241,6 +242,7 @@
       "battery_restart_cap": { "name": "Battery restart cap" },
       "battery_shutdown_cap": { "name": "Battery shutdown cap" },
       "battery_max_charge_current": { "name": "Battery max charge current" },
+      "battery_max_discharge_current": { "name": "Battery max discharge current" },
       "zero_export_power": { "name": "Zero export power" }
     },
     "select": {

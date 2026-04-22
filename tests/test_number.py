@@ -128,8 +128,8 @@ async def test_number_entities_created(
         e for e in entity_reg.entities.values()
         if e.platform == "sunsynk" and e.domain == "number"
     ]
-    # 6 caps + 3 extra (restart, shutdown, max charge current) + zero export power
-    assert len(number_entities) == 10
+    # 6 caps + 4 extra (restart, shutdown, max charge current, max discharge current) + zero export power
+    assert len(number_entities) == 11
 
 
 async def test_cap_number_set_value(

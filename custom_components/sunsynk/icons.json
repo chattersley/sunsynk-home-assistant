@@ -146,7 +146,8 @@
       "settings_sell_time_6_pac": { "default": "mdi:flash" },
       "settings_battery_restart_cap": { "default": "mdi:battery-sync" },
       "settings_battery_shutdown_cap": { "default": "mdi:battery-off" },
-      "settings_battery_max_charge_current": { "default": "mdi:battery-arrow-up" }
+      "settings_battery_max_charge_current": { "default": "mdi:battery-arrow-up" },
+      "settings_battery_max_discharge_current": { "default": "mdi:battery-arrow-down" }
     },
     "number": {
       "cap_soc_floor_1": { "default": "mdi:battery-lock" },
@@ -157,7 +158,8 @@
       "cap_soc_floor_6": { "default": "mdi:battery-lock" },
       "battery_restart_cap": { "default": "mdi:battery-sync" },
       "battery_shutdown_cap": { "default": "mdi:battery-off" },
-      "battery_max_charge_current": { "default": "mdi:battery-arrow-up" }
+      "battery_max_charge_current": { "default": "mdi:battery-arrow-up" },
+      "battery_max_discharge_current": { "default": "mdi:battery-arrow-down" }
     },
     "select": {
       "sell_time_1": { "default": "mdi:clock-outline" },

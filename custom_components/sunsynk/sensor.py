@@ -1640,6 +1640,7 @@ def _create_inverter_sensors(
             ("battery_restart_cap", "settings_battery_restart_cap"),
             ("battery_shutdown_cap", "settings_battery_shutdown_cap"),
             ("battery_max_current_charge", "settings_battery_max_charge_current"),
+            ("battery_max_current_discharge", "settings_battery_max_discharge_current"),
         ]
         for key, tkey in settings_defs:
             entities.append(

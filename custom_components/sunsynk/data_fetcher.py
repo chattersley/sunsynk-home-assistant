@@ -382,6 +382,7 @@ _API_KEY_TO_SNAKE: dict[str, str] = {
     "batteryRestartCap": "battery_restart_cap",
     "batteryShutdownCap": "battery_shutdown_cap",
     "batteryMaxCurrentCharge": "battery_max_current_charge",
+    "batteryMaxCurrentDischarge": "battery_max_current_discharge",
     "batteryLowCap": "battery_low_cap",
     "zeroExportPower": "zero_export_power",
     "solarSell": "solar_sell",
