@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from custom_components.sunsynk.data_fetcher import (
     ErrorTracker,
     TokenManager,
     _async_fetch_successful,
+    _build_set_kwargs,
     async_fetch_all_data,
     async_write_settings,
 )
@@ -348,3 +350,59 @@ class TestAsyncFetchAllData:
         # Plant 1 should be ignored, only plant 2 present
         assert 1 not in result["plants"]
         assert 2 in result["plants"]
+
+
+class TestBuildSetKwargs:
+    """Regression tests for the set-endpoint payload builder (issue #16)."""
+
+    @staticmethod
+    def _full_current_settings() -> SimpleNamespace:
+        return SimpleNamespace(
+            sell_time1="00:00", sell_time2="06:00", sell_time3="12:00",
+            sell_time4="18:00", sell_time5="22:00", sell_time6="23:30",
+            cap1="20", cap2="30", cap3="40", cap4="50", cap5="60", cap6="70",
+            sell_time1_pac="5000", sell_time2_pac="5000", sell_time3_pac="5000",
+            sell_time4_pac="5000", sell_time5_pac="5000", sell_time6_pac="5000",
+            sell_time1_volt="49", sell_time2_volt="49", sell_time3_volt="49",
+            sell_time4_volt="49", sell_time5_volt="49", sell_time6_volt="49",
+            time1on="false", time2on="false", time3on="false",
+            time4on="false", time5on="false", time6on="false",
+            gen_time1on="false", gen_time2on="false", gen_time3on="false",
+            gen_time4on="false", gen_time5on="false", gen_time6on="false",
+            sell_time1on="true", sell_time2on="true", sell_time3on="true",
+            sell_time4on="true", sell_time5on="true", sell_time6on="true",
+            solar_sell="1", pv_max_limit="6500",
+            peak_and_vallery="1", sys_work_mode="2",
+        )
+
+    def test_timer_write_includes_programme_power_and_volt(self) -> None:
+        """A timer toggle must carry per-slot Pac + Volt values, otherwise
+        SunSynk silently drops the programme change (root cause of #16)."""
+        current = self._full_current_settings()
+        kwargs = _build_set_kwargs({"time1on": "1"}, current)
+
+        # The change itself
+        assert kwargs["time1on"] == "1"
+        # Programme state that the portal always sends alongside a timer write
+        for slot in range(1, 7):
+            assert kwargs[f"sell_time{slot}_pac"] == "5000", f"missing pac for slot {slot}"
+            assert kwargs[f"sell_time{slot}_volt"] == "49", f"missing volt for slot {slot}"
+        # System-level flags that gate programme acceptance
+        assert kwargs["solar_sell"] == "1"
+        assert kwargs["pv_max_limit"] == "6500"
+        assert kwargs["peak_and_vallery"] == "1"
+        assert kwargs["sys_work_mode"] == "2"
+
+    def test_user_change_wins_over_current_settings(self) -> None:
+        """An overlaid user change must not be clobbered by the baseline."""
+        current = self._full_current_settings()
+        kwargs = _build_set_kwargs({"time1on": "1"}, current)
+        assert kwargs["time1on"] == "1"  # not 'false' from current
+
+    def test_camel_case_overlay_keys_are_mapped(self) -> None:
+        """Switch/number entities pass camelCase keys; they must be
+        translated to the snake_case kwargs the SDK expects."""
+        current = self._full_current_settings()
+        kwargs = _build_set_kwargs({"sellTime1Pac": "4000"}, current)
+        assert kwargs["sell_time1_pac"] == "4000"
+        assert "sellTime1Pac" not in kwargs
