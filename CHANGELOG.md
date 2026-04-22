@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/chattersley/sunsynk-home-assistant/compare/v1.3.0...v1.4.0) (2026-04-22)
+
+
+### Features
+
+* add writable Battery Max Discharge Current number entity ([417aa0d](https://github.com/chattersley/sunsynk-home-assistant/commit/417aa0d614e73a527563298cdd59246753df2ab1)), closes [#18](https://github.com/chattersley/sunsynk-home-assistant/issues/18)
+
+
+### Bug Fixes
+
+* correct invalid except clause syntax in number platform ([d3e9b27](https://github.com/chattersley/sunsynk-home-assistant/commit/d3e9b27e8ffbb57759309d0568e38c5031673041))
+* read installed PV capacity from plant detail, not list item ([34661b7](https://github.com/chattersley/sunsynk-home-assistant/commit/34661b7a76bb35c4971b950794e2bd6c5af1a0f6)), closes [#15](https://github.com/chattersley/sunsynk-home-assistant/issues/15)
+* send full programme state on every timer write ([69867c9](https://github.com/chattersley/sunsynk-home-assistant/commit/69867c9f4f733a5f56e0e42fcf80b064993ef34a)), closes [#16](https://github.com/chattersley/sunsynk-home-assistant/issues/16)
+* triage open issues ([#15](https://github.com/chattersley/sunsynk-home-assistant/issues/15), [#16](https://github.com/chattersley/sunsynk-home-assistant/issues/16), [#18](https://github.com/chattersley/sunsynk-home-assistant/issues/18), partial [#9](https://github.com/chattersley/sunsynk-home-assistant/issues/9)) ([f0031c5](https://github.com/chattersley/sunsynk-home-assistant/commit/f0031c5a8880015cf5615c91114674198b896470))
+
 ## [1.3.0](https://github.com/chattersley/sunsynk-home-assistant/compare/v1.2.2...v1.3.0) (2026-04-21)
 
 
