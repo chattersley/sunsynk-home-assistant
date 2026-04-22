@@ -15,7 +15,7 @@ dependencies = [
 dev = [
     "pyright>=1.1.408",
     "pytest-homeassistant-custom-component>=0.13.0",
-    "ruff>=0.11.0",
+    "ruff>=0.11.0,<0.15",
 ]
 
 [tool.ruff]
