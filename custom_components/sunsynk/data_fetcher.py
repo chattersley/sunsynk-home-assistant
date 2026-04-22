@@ -382,24 +382,64 @@ _API_KEY_TO_SNAKE: dict[str, str] = {
     "batteryRestartCap": "battery_restart_cap",
     "batteryShutdownCap": "battery_shutdown_cap",
     "batteryMaxCurrentCharge": "battery_max_current_charge",
+    "batteryMaxCurrentDischarge": "battery_max_current_discharge",
     "batteryLowCap": "battery_low_cap",
     "zeroExportPower": "zero_export_power",
+    "solarSell": "solar_sell",
+    "pvMaxLimit": "pv_max_limit",
+    "sellTime1Pac": "sell_time1_pac",
+    "sellTime2Pac": "sell_time2_pac",
+    "sellTime3Pac": "sell_time3_pac",
+    "sellTime4Pac": "sell_time4_pac",
+    "sellTime5Pac": "sell_time5_pac",
+    "sellTime6Pac": "sell_time6_pac",
+    "sellTime1Volt": "sell_time1_volt",
+    "sellTime2Volt": "sell_time2_volt",
+    "sellTime3Volt": "sell_time3_volt",
+    "sellTime4Volt": "sell_time4_volt",
+    "sellTime5Volt": "sell_time5_volt",
+    "sellTime6Volt": "sell_time6_volt",
 }
 
-# Minimum required fields for the set endpoint (snake_case names matching InverterSettings attrs)
+# Minimum required fields for the set endpoint (snake_case names matching InverterSettings attrs).
+#
+# The SunSynk portal sends the full programme state on every write. Submitting
+# a single toggle (e.g. time1on) without the accompanying per-slot power and
+# voltage values — plus system-level mode flags — causes the server to
+# silently drop the change and reply with the prior state, which manifests in
+# HA as a switch flipping back a few seconds after toggling.
+#
+# See setrequest.json for a captured portal payload.
 _MIN_REQUIRED_FIELDS: list[str] = [
+    # Programme times (per slot)
     "sell_time1",
     "sell_time2",
     "sell_time3",
     "sell_time4",
     "sell_time5",
     "sell_time6",
+    # Programme SOC caps (per slot)
     "cap1",
     "cap2",
     "cap3",
     "cap4",
     "cap5",
     "cap6",
+    # Programme output power (per slot)
+    "sell_time1_pac",
+    "sell_time2_pac",
+    "sell_time3_pac",
+    "sell_time4_pac",
+    "sell_time5_pac",
+    "sell_time6_pac",
+    # Programme voltage floor (per slot)
+    "sell_time1_volt",
+    "sell_time2_volt",
+    "sell_time3_volt",
+    "sell_time4_volt",
+    "sell_time5_volt",
+    "sell_time6_volt",
+    # Per-slot on flags
     "time1on",
     "time2on",
     "time3on",
@@ -418,6 +458,11 @@ _MIN_REQUIRED_FIELDS: list[str] = [
     "sell_time4on",
     "sell_time5on",
     "sell_time6on",
+    # System-level flags that gate timer programme acceptance
+    "solar_sell",
+    "pv_max_limit",
+    "peak_and_vallery",
+    "sys_work_mode",
 ]
 
 
