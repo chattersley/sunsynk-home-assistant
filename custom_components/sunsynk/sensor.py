@@ -254,12 +254,25 @@ class SunSynkPlantInfoSensor(SunSynkBaseSensor):
         self._attr_device_info = plant_device_info(coordinator, plant_id)
 
     def _compute_native_value(self) -> Any | None:
-        """Return the value from the plant info object."""
+        """Return the value from the plant detail object.
+
+        The list endpoint (`plants/info`) omits `totalPower`; only the per-plant
+        detail endpoint populates it. We fall back to `info` so any future
+        list-only fields still resolve, but prefer `detail` for fields like
+        installed PV capacity.
+        """
         if not self.coordinator.data:
             return None
         plant = self.coordinator.data.get("plants", {}).get(self._plant_id)
-        if plant and plant.get("info"):
-            return getattr(plant["info"], self._key, None)
+        if not plant:
+            return None
+        for source in ("detail", "info"):
+            obj = plant.get(source)
+            if obj is None:
+                continue
+            val = getattr(obj, self._key, None)
+            if val is not None:
+                return val
         return None
 
 

@@ -194,6 +194,7 @@ def _make_coordinator_data():
                     ],
                     currency=SimpleNamespace(id=366, code="GBP", text="British Pound"),
                     invest=0.0,
+                    total_power=6.6,
                 ),
                 "flow": _make_flow(),
                 "inverters": {
@@ -274,6 +275,34 @@ async def test_sensor_entities_created(
     # We should have many sensor entities
     sensor_entities = [e for e in entities if e.domain == "sensor"]
     assert len(sensor_entities) > 10
+
+
+def test_plant_info_sensor_reads_total_power_from_detail(mock_data) -> None:
+    """Installed PV capacity is only populated on the plant detail endpoint,
+    not on the shallow list-endpoint object stored in plant['info']."""
+    from custom_components.sunsynk.sensor import SunSynkPlantInfoSensor
+
+    coordinator = SimpleNamespace(data=mock_data)
+    sensor = SunSynkPlantInfoSensor.__new__(SunSynkPlantInfoSensor)
+    sensor.coordinator = coordinator
+    sensor._plant_id = 1
+    sensor._key = "total_power"
+
+    assert sensor._compute_native_value() == 6.6
+
+
+def test_plant_info_sensor_missing_detail_returns_none(mock_data) -> None:
+    """If detail is missing and info lacks the key, return None (not KeyError)."""
+    from custom_components.sunsynk.sensor import SunSynkPlantInfoSensor
+
+    mock_data["plants"][1]["detail"] = None
+    coordinator = SimpleNamespace(data=mock_data)
+    sensor = SunSynkPlantInfoSensor.__new__(SunSynkPlantInfoSensor)
+    sensor.coordinator = coordinator
+    sensor._plant_id = 1
+    sensor._key = "total_power"
+
+    assert sensor._compute_native_value() is None
 
 
 async def test_sensor_no_data(hass: HomeAssistant) -> None:
