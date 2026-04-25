@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/chattersley/sunsynk-home-assistant/compare/v1.4.0...v1.4.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* battery cap writes, optimistic timer state, temp sensor logging ([#23](https://github.com/chattersley/sunsynk-home-assistant/issues/23)) ([0ceb166](https://github.com/chattersley/sunsynk-home-assistant/commit/0ceb166ff01523fbc090e597f00d111e21275a19))
+
 ## [1.4.0](https://github.com/chattersley/sunsynk-home-assistant/compare/v1.3.0...v1.4.0) (2026-04-22)
 
 
