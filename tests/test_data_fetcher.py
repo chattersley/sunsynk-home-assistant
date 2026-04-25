@@ -406,3 +406,19 @@ class TestBuildSetKwargs:
         kwargs = _build_set_kwargs({"sellTime1Pac": "4000"}, current)
         assert kwargs["sell_time1_pac"] == "4000"
         assert "sellTime1Pac" not in kwargs
+
+    @pytest.mark.parametrize(
+        "api_key,snake_key,value",
+        [
+            ("batteryRestartCap", "battery_restart_cap", "15"),
+            ("batteryShutdownCap", "battery_shutdown_cap", "10"),
+            ("batteryMaxCurrentCharge", "battery_max_current_charge", "50"),
+            ("batteryMaxCurrentDischarge", "battery_max_current_discharge", "50"),
+        ],
+    )
+    def test_battery_cap_keys_are_mapped(self, api_key: str, snake_key: str, value: str) -> None:
+        """Battery cap camelCase API keys must map to their snake_case SDK equivalents."""
+        current = self._full_current_settings()
+        kwargs = _build_set_kwargs({api_key: value}, current)
+        assert kwargs[snake_key] == value
+        assert api_key not in kwargs

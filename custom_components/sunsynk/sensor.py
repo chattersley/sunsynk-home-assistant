@@ -570,6 +570,13 @@ class SunSynkInverterTempSensor(SunSynkBaseSensor):
             "temp",
         )
         if not day_res or not day_res.infos:
+            _LOGGER.debug(
+                "No temperature data for inverter %s (day_res=%s, infos=%s) — "
+                "sensor will show Unknown until the inverter logs temperature records",
+                self._sn,
+                day_res,
+                getattr(day_res, "infos", None) if day_res else None,
+            )
             return None
         return day_res.infos[-1]
 

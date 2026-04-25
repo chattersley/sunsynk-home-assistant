@@ -8,7 +8,7 @@ dependencies = [
     "cryptography>=46.0.5",
     "homeassistant>=2026.2.3",
     "python-dotenv>=1.2.2",
-    "sunsynk-python>=0.4.0",
+    "sunsynk-python>=0.4.1",
 ]
 
 [dependency-groups]
@@ -47,3 +47,6 @@ reportMissingModuleSource = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.uv.sources]
+sunsynk-python = { git = "https://github.com/chattersley/sunsynk-python", rev = "main" }

@@ -29,6 +29,7 @@ jobs:
         with:
           python-version: "3.14"
       - run: |
+          pip install "sunsynk-python @ git+https://github.com/chattersley/sunsynk-python.git@main"
           pip install -e .
           pip install pytest-homeassistant-custom-component
       - run: pytest tests/ -v

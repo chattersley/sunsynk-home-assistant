@@ -166,6 +166,50 @@ async def test_cap_number_set_value(
     assert call_args[0][3] == {"cap1": "50"}
 
 
+@pytest.mark.parametrize(
+    "translation_key,api_key,value",
+    [
+        ("battery_restart_cap", "batteryRestartCap", 20),
+        ("battery_shutdown_cap", "batteryShutdownCap", 15),
+        ("battery_max_charge_current", "batteryMaxCurrentCharge", 80),
+        ("battery_max_discharge_current", "batteryMaxCurrentDischarge", 80),
+    ],
+)
+async def test_extra_number_set_value(
+    hass: HomeAssistant,
+    setup_integration,
+    translation_key: str,
+    api_key: str,
+    value: int,
+) -> None:
+    """Test that extra number entities send the correct camelCase API key."""
+    entity_reg = er.async_get(hass)
+    entities = [
+        e for e in entity_reg.entities.values()
+        if e.platform == "sunsynk" and e.domain == "number" and e.translation_key == translation_key
+    ]
+    assert len(entities) == 1, f"No entity with translation_key={translation_key}"
+    entity_id = entities[0].entity_id
+
+    with (
+        patch("custom_components.sunsynk.number.async_write_settings") as mock_write,
+        patch(
+            "custom_components.sunsynk.async_fetch_all_data",
+            return_value=_make_coordinator_data(),
+        ),
+    ):
+        await hass.services.async_call(
+            "number",
+            "set_value",
+            {"entity_id": entity_id, "value": value},
+            blocking=True,
+        )
+
+    mock_write.assert_called_once()
+    payload = mock_write.call_args[0][3]
+    assert payload == {api_key: str(value)}
+
+
 async def test_number_no_settings(hass: HomeAssistant) -> None:
     """Test number platform handles missing settings gracefully."""
     data = _make_coordinator_data()

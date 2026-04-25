@@ -125,6 +125,11 @@ class SunSynkPairedTimerSwitch(CoordinatorEntity, SwitchEntity):  # type: ignore
             paired_raw = getattr(settings, self._paired_settings_key, None)
             paired_val = _bool_to_api(_api_to_bool(paired_raw))
 
+        # Optimistic update: push the new state immediately so the UI doesn't
+        # revert while the coordinator refresh reads back cached API data.
+        self._attr_is_on = new_value
+        self.async_write_ha_state()
+
         payload = {
             self._api_key: _bool_to_api(new_value),
             self._paired_api_key: paired_val,
