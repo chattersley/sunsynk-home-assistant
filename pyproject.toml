@@ -48,5 +48,3 @@ reportMissingModuleSource = false
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
-[tool.uv.sources]
-sunsynk-python = { git = "https://github.com/chattersley/sunsynk-python", rev = "main" }
