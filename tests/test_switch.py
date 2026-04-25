@@ -275,6 +275,46 @@ async def test_simple_switch_turn_off(
     assert payload == {"peakAndVallery": "0"}
 
 
+async def test_paired_timer_optimistic_state(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Turning on a paired timer switch should push the new state before the write completes."""
+    entity_reg = er.async_get(hass)
+    gen1_entities = [
+        e for e in entity_reg.entities.values()
+        if e.platform == "sunsynk" and e.domain == "switch" and e.translation_key == "gen_timer_1_on"
+    ]
+    assert len(gen1_entities) == 1
+    entity_id = gen1_entities[0].entity_id
+
+    state_during_write: list[str] = []
+
+    async def capture_state(*args, **kwargs):
+        state_during_write.append(hass.states.get(entity_id).state)
+
+    with (
+        patch(
+            "custom_components.sunsynk.switch.async_write_settings",
+            side_effect=capture_state,
+        ),
+        patch(
+            "custom_components.sunsynk.async_fetch_all_data",
+            return_value=_make_coordinator_data(),
+        ),
+    ):
+        await hass.services.async_call(
+            "switch",
+            "turn_on",
+            {"entity_id": entity_id},
+            blocking=True,
+        )
+
+    assert len(state_during_write) == 1
+    assert state_during_write[0] == "on", (
+        "Optimistic state should be 'on' before write completes, got: " + state_during_write[0]
+    )
+
+
 async def test_switch_no_settings(hass: HomeAssistant) -> None:
     """Test switch platform handles missing settings."""
     data = _make_coordinator_data()
